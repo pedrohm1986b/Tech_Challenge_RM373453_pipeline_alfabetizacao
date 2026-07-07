@@ -58,7 +58,7 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 **Data:** 07/07/2026 · **Etapa:** Arquitetura
 
-**Decisão:** a ingestão batch cobre as fontes consolidadas e de mudança esporádica: diretório de municípios, metas pactuadas e o histórico do indicador e dos microdados de 2023 e 2024. O streaming simulado opera no nível do aluno, reproduzindo a chegada contínua de resultados da avaliação de 2025, que a pipeline agrega para atualizar o indicador por município e UF.
+**Decisão:** a ingestão batch cobre as publicações consolidadas, passadas e futuras: diretório de municípios, metas pactuadas, o histórico do indicador e dos microdados de 2023 e 2024, e os consolidados oficiais que vierem a ser divulgados. O streaming simulado opera no nível do aluno, reproduzindo a chegada contínua de resultados da avaliação de 2025, que a pipeline agrega para compor uma estimativa preliminar do indicador por município e UF, utilizada apenas onde ainda não existe dado oficial publicado e substituída quando ele chegar. *(Redação atualizada após os refinamentos das PRs #4 e #5.)*
 
 **Contexto:** o enunciado exige ingestão híbrida e cita como exemplos de eventos a atualização de indicadores e novas medições de desempenho, mas a definição de qual fonte flui por qual modo é uma decisão de arquitetura do time.
 
@@ -68,15 +68,45 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-006 · Separação entre código e dados: repositório versiona código, dados vivem no data lake
+
+**Data:** 07/07/2026 · **Etapa:** Arquitetura
+
+**Decisão:** o repositório Git contém exclusivamente código, configuração e documentação. Os dados de todas as camadas do medalhão (Bronze, Silver, Gold e quarentena) residem no data lake, em bucket do Google Cloud Storage, e não são versionados no Git.
+
+**Contexto:** ao estruturar o repositório, discutiu-se onde as camadas do medalhão deveriam viver, incluindo a hipótese de subpastas locais no projeto.
+
+**Justificativa:** Git é adequado para arquivos de texto pequenos com diff legível; dados são volumosos e binários (só a tabela de alunos tem 256 MB), e o histórico dos dados é responsabilidade do próprio lake, com a Bronze preservando tudo que chegou. A separação entre computação e armazenamento é o princípio central das arquiteturas modernas de dados em nuvem, e mantém o repositório leve e clonável por qualquer avaliador.
+
+**Alternativas consideradas:** manter amostras de dados no repositório. Descartada como regra geral; poderá ser usada pontualmente para dados de teste pequenos, se necessário.
+
+---
+
+## D-007 · Diagrama de arquitetura como código (Mermaid no README)
+
+**Data:** 07/07/2026 · **Etapa:** Arquitetura
+
+**Decisão:** o diagrama da pipeline é escrito em Mermaid, dentro do próprio README, e evolui por Pull Request como qualquer outro artefato do projeto.
+
+**Contexto:** o enunciado exige um diagrama da pipeline no README. As opções avaliadas foram ferramentas visuais (draw.io, Excalidraw), que geram arquivos de imagem, e diagrama como código.
+
+**Justificativa:** o GitHub renderiza Mermaid nativamente, o diagrama fica versionado como texto (com diff legível nas revisões) e não há risco de a imagem exportada ficar dessincronizada do fonte editável. O diagrama já passou por duas rodadas de revisão em PR, o que valida o fluxo.
+
+**Alternativas consideradas:** draw.io com imagem exportada em `docs/`. Descartada pela manutenção dupla (fonte + imagem) e por não registrar a evolução do desenho no diff das PRs.
+
+---
+
 ## Decisões pendentes
 
-| ID previsto | Tema | Sessão prevista |
-|---|---|---|
-| D-006 | Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
-| D-007 | Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
-| D-008 | Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
-| D-009 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
-| D-010 | Ferramenta de orquestração | 7.1 |
+Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
+
+| Tema | Sessão prevista |
+|---|---|
+| Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
+| Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
+| Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
+| Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
+| Ferramenta de orquestração | 7.1 |
 
 ---
 

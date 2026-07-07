@@ -153,11 +153,11 @@ flowchart LR
     GD --> ML
 ```
 
-Os nomes dos serviços de mensageria e de processamento serão adicionados ao diagrama após as decisões D-008 e D-009, registradas como pendentes no [diário de decisões](docs/decisoes.md).
+Os nomes dos serviços de mensageria e de processamento serão adicionados ao diagrama quando essas escolhas forem tomadas, conforme a tabela de decisões pendentes do [diário de decisões](docs/decisoes.md).
 
 ### 4.5 Componentes e serviços
 
-🚧 Em definição. Depende das decisões pendentes D-008 (mensageria do streaming) e D-009 (motor de processamento), registradas no [diário de decisões](docs/decisoes.md).
+🚧 Em definição. Depende das decisões pendentes de mensageria do streaming e de motor de processamento, registradas no [diário de decisões](docs/decisoes.md).
 
 ## 5. Tecnologias utilizadas
 
