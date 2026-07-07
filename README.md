@@ -102,15 +102,58 @@ Cada módulo de `src/` escreve em uma camada: `src/ingestion` alimenta a Bronze,
 
 ### 4.3 Fluxo de dados
 
-1. **Ingestão batch:** consultas ao BigQuery público da Base dos Dados extraem as fontes consolidadas e as gravam na camada Bronze, com metadados de ingestão (timestamp e origem);
-2. **Ingestão streaming:** um produtor simula resultados individuais da avaliação de 2025; um consumidor valida a estrutura dos eventos e grava micro-lotes na Bronze;
-3. **Transformação:** os dados da Bronze são limpos, padronizados e integrados na Silver; os eventos de alunos são agregados e atualizam o indicador por município e UF;
+1. **Ingestão batch:** consultas ao BigQuery público da Base dos Dados extraem as fontes consolidadas e as gravam na camada Bronze, com metadados de ingestão (timestamp e origem). O papel do batch não se limita ao histórico de 2023 e 2024: toda publicação consolidada futura, como o resultado oficial de 2025 quando divulgado pelo INEP, entra pela mesma carga;
+2. **Ingestão streaming:** um producer, que representa o sistema externo de avaliação, publica no tópico os resultados individuais do ciclo de 2025; o producer não conhece o destino dos eventos. Um consumer, componente da pipeline, lê o tópico, valida a estrutura dos eventos e grava micro-lotes na Bronze. Essa separação de papéis é o desacoplamento característico do padrão publish/subscribe;
+3. **Transformação:** os dados da Bronze são limpos, padronizados e integrados na Silver; os eventos de alunos são agregados para compor a estimativa preliminar do indicador de 2025;
 4. **Qualidade:** as regras de validação são executadas na passagem para a Silver; registros reprovados são isolados na quarentena com o motivo da reprovação;
-5. **Consumo:** a camada Gold materializa os datasets analíticos, publicados para consulta SQL, dashboards e modelos.
+5. **Consumo analítico:** a camada Gold materializa os datasets analíticos, publicados para consulta SQL, dashboards e modelos.
+
+Os dois modos de ingestão compartilham as mesmas camadas do medalhão: batch e streaming gravam em áreas distintas da mesma Bronze e convergem na Silver, onde o histórico consolidado e a estimativa do ciclo corrente são integrados. Da Silver em diante, o fluxo é único.
 
 ### 4.4 Diagrama da pipeline
 
-🚧 Em construção (Etapa 2 do roadmap).
+```mermaid
+flowchart LR
+    subgraph F["Fontes"]
+        BD[("BigQuery público<br>Base dos Dados<br><i>histórico 2023–2024:<br>indicador · metas ·<br>diretórios · alunos</i>")]
+        SIM["Sistema de avaliação<br>simulado (Producer)<br><i>resultados de alunos<br>ciclo 2025</i>"]
+    end
+
+    subgraph M["Mensageria"]
+        T[/"tópico de eventos<br><i>(partições)</i>"/]
+    end
+
+    subgraph I["Ingestão"]
+        B1["Batch<br><i>cargas periódicas</i>"]
+        C["Consumer<br><i>lê o tópico e grava<br>micro-lotes na Bronze</i>"]
+    end
+
+    subgraph L["Data Lake (GCS) · Arquitetura Medalhão"]
+        BR["🥉 Bronze<br><i>dados brutos + metadados</i>"]
+        Q{"regras de<br>qualidade"}
+        SV["🥈 Silver<br><i>padronizados e integrados<br>+ estimativa 2025 agregada</i>"]
+        QA["🚨 Quarentena<br><i>reprovados + motivo</i>"]
+        GD["🥇 Gold<br><i>datasets analíticos</i>"]
+    end
+
+    subgraph CO["Consumo analítico"]
+        SQL["Consultas SQL"]
+        DB["Dashboards"]
+        ML["Modelos de IA"]
+    end
+
+    BD --> B1 --> BR
+    SIM -->|publica| T -->|lê| C -->|grava| BR
+    BR --> Q
+    Q -->|aprovados| SV
+    Q -.->|reprovados| QA
+    SV --> GD
+    GD --> SQL
+    GD --> DB
+    GD --> ML
+```
+
+Os nomes dos serviços de mensageria e de processamento serão adicionados ao diagrama após as decisões D-008 e D-009, registradas como pendentes no [diário de decisões](docs/decisoes.md).
 
 ### 4.5 Componentes e serviços
 
