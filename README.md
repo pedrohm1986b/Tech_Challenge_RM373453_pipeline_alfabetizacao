@@ -103,7 +103,7 @@ Cada módulo de `src/` escreve em uma camada: `src/ingestion` alimenta a Bronze,
 ### 4.3 Fluxo de dados
 
 1. **Ingestão batch:** consultas ao BigQuery público da Base dos Dados extraem as fontes consolidadas e as gravam na camada Bronze, com metadados de ingestão (timestamp e origem). O papel do batch não se limita ao histórico de 2023 e 2024: toda publicação consolidada futura, como o resultado oficial de 2025 quando divulgado pelo INEP, entra pela mesma carga;
-2. **Ingestão streaming:** um producer, que representa o sistema externo de avaliação, publica no tópico os resultados individuais do ciclo de 2025; o producer não conhece o destino dos eventos. Um consumer, componente da pipeline, lê o tópico, valida a estrutura dos eventos e grava micro-lotes na Bronze. Essa separação de papéis é o desacoplamento característico do padrão publish/subscribe;
+2. **Ingestão streaming:** um producer, que representa o sistema externo de avaliação, publica no tópico os resultados individuais do ciclo de 2025; o producer não conhece o destino dos eventos. Um consumer, componente da pipeline, lê o tópico, valida a estrutura dos eventos, descarta duplicatas e grava micro-lotes na Bronze. Eventos estruturalmente inválidos (campo ausente, tipo errado) são desviados pelo consumer para uma Dead Letter Queue (DLQ), sem bloquear o fluxo. A DLQ não se confunde com a quarentena de qualidade: a DLQ recebe o que não pôde ser lido, na ingestão; a quarentena recebe o que foi lido mas reprovou em regra de negócio, na transformação. Essa separação de papéis é o desacoplamento característico do padrão publish/subscribe;
 3. **Transformação:** os dados da Bronze são limpos, padronizados e integrados na Silver; os eventos de alunos são agregados para compor a estimativa preliminar do indicador de 2025;
 4. **Qualidade:** as regras de validação são executadas na passagem para a Silver; registros reprovados são isolados na quarentena com o motivo da reprovação;
 5. **Consumo analítico:** a camada Gold materializa os datasets analíticos, publicados para consulta SQL, dashboards e modelos.
@@ -121,19 +121,26 @@ flowchart LR
 
     subgraph M["Mensageria"]
         T[/"tópico de eventos<br><i>(partições)</i>"/]
+        DLQ[/"DLQ<br><i>eventos malformados</i>"/]
     end
 
     subgraph I["Ingestão"]
         B1["Batch<br><i>cargas periódicas</i>"]
-        C["Consumer<br><i>lê o tópico e grava<br>micro-lotes na Bronze</i>"]
+        C["Consumer<br><i>valida estrutura +<br>deduplicação</i>"]
     end
 
     subgraph L["Data Lake (GCS) · Arquitetura Medalhão"]
-        BR["🥉 Bronze<br><i>dados brutos + metadados</i>"]
+        subgraph BZ["🥉 Bronze"]
+            BZB["área batch<br><i>consolidados +<br>timestamp de ingestão</i>"]
+            BZS["área streaming<br><i>micro-lotes de eventos<br>event_time + processing_time</i>"]
+        end
         Q{"regras de<br>qualidade"}
-        SV["🥈 Silver<br><i>padronizados e integrados<br>+ estimativa 2025 agregada</i>"]
-        QA["🚨 Quarentena<br><i>reprovados + motivo</i>"]
-        GD["🥇 Gold<br><i>datasets analíticos</i>"]
+        subgraph SV["🥈 Silver"]
+            SVH["histórico oficial<br>integrado <i>(batch)</i>"]
+            SVE["estimativa 2025<br><i>(agregação dos eventos)</i>"]
+        end
+        QA["🚨 quarentena de qualidade<br><i>reprovados em regra<br>de negócio + motivo</i>"]
+        GD["🥇 Gold<br><i>datasets analíticos<br>fluxo único</i>"]
     end
 
     subgraph CO["Consumo analítico"]
@@ -142,12 +149,16 @@ flowchart LR
         ML["Modelos de IA"]
     end
 
-    BD --> B1 --> BR
-    SIM -->|publica| T -->|lê| C -->|grava| BR
-    BR --> Q
-    Q -->|aprovados| SV
+    BD --> B1 --> BZB
+    SIM -->|publica| T -->|lê| C -->|grava| BZS
+    C -.->|malformados| DLQ
+    BZB --> Q
+    BZS --> Q
+    Q -->|aprovados| SVH
+    Q -->|aprovados| SVE
     Q -.->|reprovados| QA
-    SV --> GD
+    SVH --> GD
+    SVE --> GD
     GD --> SQL
     GD --> DB
     GD --> ML
