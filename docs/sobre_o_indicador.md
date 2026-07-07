@@ -31,7 +31,24 @@ A consistência entre a coluna `alfabetizado` e a coluna `proficiencia` dos micr
 
 A fronteira entre os dois grupos ocorre exatamente em 743 pontos, confirmando que a classificação dos microdados aplica o critério oficial.
 
-## 4. Resultados nacionais e metas pactuadas
+## 4. Relação entre os microdados e as tabelas consolidadas
+
+Durante o levantamento das fontes, testou-se a hipótese de que as tabelas consolidadas (`municipio` e `uf`) seriam agregações diretas dos microdados de alunos. O teste recalculou a taxa de alfabetização de cada combinação de município, ano e rede a partir dos microdados, usando o peso amostral (`peso_aluno`), e comparou o resultado com o valor oficial:
+
+| Métrica | Resultado |
+|---|---|
+| Combinações comparadas (município, ano, rede) | 12.408 |
+| Diferença média | 0,036 ponto percentual |
+| Coincidem em até 0,05 ponto percentual | 95,8% |
+
+O teste confirma a relação na maior parte dos casos, mas revela duas limitações que impedem tratar a hipótese como regra:
+
+1. **Cobertura incompleta dos microdados em 2023:** 643 municípios constam na tabela consolidada daquele ano sem nenhum registro correspondente nos microdados públicos (em 2024 a cobertura é completa). Os microdados disponibilizados, portanto, não são a base integral utilizada pelo INEP;
+2. **Divergências residuais:** cerca de 4% das combinações apresentam diferenças de valor, sugerindo regras adicionais no cálculo oficial (critérios de participação, supressão de células pequenas ou tratamentos não documentados publicamente).
+
+A consequência para a arquitetura do projeto: as tabelas consolidadas são tratadas como fonte oficial do histórico, e as agregações calculadas pela pipeline a partir de eventos no nível do aluno são identificadas como estimativas próprias, sem substituir os valores oficiais.
+
+## 5. Resultados nacionais e metas pactuadas
 
 Valores da tabela `meta_alfabetizacao_brasil` (rede pública):
 
@@ -43,14 +60,14 @@ Valores da tabela `meta_alfabetizacao_brasil` (rede pública):
 
 As metas pactuadas seguem em progressão: aproximadamente 67% em 2026, 74% em 2028 e 80% em 2030. Cabe distinguir a meta numérica pactuada com as redes (80% em 2030) da aspiração da política, que é alfabetizar a totalidade das crianças. O percentual de participação também é relevante para a leitura do indicador, pois taxas calculadas sobre participação baixa podem não representar o conjunto dos estudantes.
 
-## 5. Implicações para a pipeline
+## 6. Implicações para a pipeline
 
 - A coluna `proficiencia` dos microdados permite recalcular o indicador em diferentes agregações, desde que utilizado o peso amostral (`peso_aluno`);
 - Alunos ausentes na prova possuem proficiência nula e são classificados como não alfabetizados, o que exige tratamento explícito nas análises (a média simples de proficiência ignora nulos e pode inflar resultados);
 - As metas são fornecidas em formato wide (colunas `meta_alfabetizacao_2024` a `meta_alfabetizacao_2030`) e serão convertidas para formato long na camada Silver, permitindo a comparação direta entre meta e resultado por ano;
 - A coluna `rede` das tabelas agregadas mistura redes individuais e agregados (Total, Pública), exigindo filtro explícito para evitar dupla contagem.
 
-## 6. Referências
+## 7. Referências
 
 - INEP. [Avaliação da Alfabetização](https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/avaliacao-da-alfabetizacao).
 - INEP. [Inep divulga dados do Indicador Criança Alfabetizada por município](https://www.gov.br/inep/pt-br/centrais-de-conteudo/noticias/avaliacao-da-alfabetizacao/inep-divulga-dados-do-indicador-crianca-alfabetizada-por-municipio). Mar. 2026.
