@@ -11,7 +11,7 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 1. [Contexto do problema](#1-contexto-do-problema)
 2. [Objetivo do projeto](#2-objetivo-do-projeto)
 3. [Fonte de dados](#3-fonte-de-dados)
-4. [Arquitetura da solução](#4-arquitetura-da-solução) 🚧
+4. [Arquitetura da solução](#4-arquitetura-da-solução)
 5. [Tecnologias utilizadas](#5-tecnologias-utilizadas) 🚧
 6. [Decisões arquiteturais e trade-offs](#6-decisões-arquiteturais-e-trade-offs) 🚧
 7. [Qualidade de dados](#7-qualidade-de-dados) 🚧
@@ -69,7 +69,50 @@ Antes de qualquer decisão de arquitetura, foi realizado um levantamento das fon
 
 ## 4. Arquitetura da solução
 
-🚧 Em construção. Será documentada na Etapa 2 do roadmap, com diagrama da pipeline e descrição do fluxo de dados de ponta a ponta.
+### 4.1 Classificação das fontes: batch e streaming
+
+A definição do modo de ingestão de cada fonte parte de um critério simples: a dinâmica natural de produção do dado. Fontes cadastrais e pactuadas mudam raramente e são publicadas de forma consolidada; já os resultados de avaliação nascem de forma contínua, à medida que as provas são aplicadas e processadas pelas redes estaduais.
+
+| Fonte | Natureza | Dinâmica de produção | Modo de ingestão |
+|---|---|---|---|
+| Diretório de municípios (IBGE) | Cadastro | Quase imutável | Batch |
+| Metas de alfabetização (Brasil, UF, município) | Pacto entre entes federativos | Definidas uma vez, revisões raras | Batch |
+| Indicador consolidado (`uf`, `municipio`) | Dado derivado (agregação) | Publicado uma vez ao ano | Batch (carga histórica) |
+| Microdados de alunos | Fonte primária | Cada avaliação processada gera um resultado novo | Streaming (simulado) |
+
+Vale destacar que as tabelas `uf` e `municipio` não são fontes primárias: são agregações dos microdados de alunos. Em uma operação real, essas visões seriam produzidas pela própria pipeline. Por isso, o streaming é simulado no nível do aluno, reproduzindo a chegada contínua de resultados da avaliação de 2025, e a pipeline se encarrega de agregá-los e atualizar o indicador por município e UF. Ingerir as demais fontes por streaming adicionaria complexidade e custo sem benefício, uma vez que sua atualização é, por natureza, esporádica e consolidada.
+
+### 4.2 Organização em camadas: código no repositório, dados no data lake
+
+O repositório versiona exclusivamente código e documentação. Os dados residem em um data lake no Google Cloud Storage, organizado segundo a Arquitetura Medalhão:
+
+```
+gs://<bucket-do-projeto>/
+├── bronze/            # dados brutos, como chegaram das fontes
+│   ├── uf/  municipio/  metas_*/  alunos/     (cargas batch)
+│   └── eventos_medicao/                       (micro-lotes do streaming)
+├── silver/            # dados limpos, padronizados e integrados
+├── gold/              # datasets analíticos prontos para consumo
+└── quarantine/        # registros reprovados nas validações, com o motivo
+```
+
+Cada módulo de `src/` escreve em uma camada: `src/ingestion` alimenta a Bronze, `src/transform` produz Silver e Gold e `src/quality` alimenta a quarentena e os relatórios de validação. Os arquivos são gravados em formato Parquet, colunar e comprimido, com particionamento por data de ingestão na Bronze e por ano nas demais camadas, o que reduz armazenamento e custo de leitura.
+
+### 4.3 Fluxo de dados
+
+1. **Ingestão batch:** consultas ao BigQuery público da Base dos Dados extraem as fontes consolidadas e as gravam na camada Bronze, com metadados de ingestão (timestamp e origem);
+2. **Ingestão streaming:** um produtor simula resultados individuais da avaliação de 2025; um consumidor valida a estrutura dos eventos e grava micro-lotes na Bronze;
+3. **Transformação:** os dados da Bronze são limpos, padronizados e integrados na Silver; os eventos de alunos são agregados e atualizam o indicador por município e UF;
+4. **Qualidade:** as regras de validação são executadas na passagem para a Silver; registros reprovados são isolados na quarentena com o motivo da reprovação;
+5. **Consumo:** a camada Gold materializa os datasets analíticos, publicados para consulta SQL, dashboards e modelos.
+
+### 4.4 Diagrama da pipeline
+
+🚧 Em construção (Etapa 2 do roadmap).
+
+### 4.5 Componentes e serviços
+
+🚧 Em definição. Depende das decisões pendentes D-008 (mensageria do streaming) e D-009 (motor de processamento), registradas no [diário de decisões](docs/decisoes.md).
 
 ## 5. Tecnologias utilizadas
 
@@ -128,7 +171,7 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 |---|---|---|
 | 0 | Fundação: repositório, estrutura, README inicial | ✅ concluída |
 | 1 | Exploração dos dados e dicionário | ✅ concluída |
-| 2 | Desenho da arquitetura, diagrama e trade-offs | ⬜ |
+| 2 | Desenho da arquitetura, diagrama e trade-offs | 🟡 em andamento |
 | 3 | Ingestão batch (camada Bronze) | ⬜ |
 | 4 | Ingestão streaming simulada (camada Bronze) | ⬜ |
 | 5 | Camada Silver e qualidade de dados | ⬜ |
