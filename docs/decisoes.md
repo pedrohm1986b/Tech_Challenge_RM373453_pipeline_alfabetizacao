@@ -106,6 +106,7 @@ Os identificadores são atribuídos apenas quando a decisão é tomada, para evi
 | Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
 | Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
+| Contrato do evento de streaming (payload, campos, versionamento) e diagrama do fluxo do dado | 4.1 |
 | Ferramenta de orquestração | 7.1 |
 
 ---
