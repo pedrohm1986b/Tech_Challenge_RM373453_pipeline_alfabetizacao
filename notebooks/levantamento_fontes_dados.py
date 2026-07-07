@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Exploração dos dados — Tech Challenge Fase 2 (Fase 1 do plano de desenvolvimento)
+Levantamento das fontes de dados — Tech Challenge Fase 2 (Etapa 1 do roteiro)
 =================================================================================
 
 O que este script faz:
@@ -17,7 +17,7 @@ Pré-requisitos (já feitos em 05/07/2026):
      Google (a credencial fica salva na máquina — nas próximas execuções não pede mais).
 
 Como rodar:
-  python exploracao_dados.py
+  python levantamento_fontes_dados.py
 
 Custo: ~zero. As consultas somam poucos MB lidos; o free tier do BigQuery
   dá 1 TB de leitura por mês. Consultas de metadados (schemas, tamanhos)

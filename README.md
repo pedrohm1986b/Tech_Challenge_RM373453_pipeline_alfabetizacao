@@ -43,7 +43,7 @@ As médias nacionais, no entanto, encobrem desigualdades territoriais expressiva
 
 O objetivo deste projeto é construir uma pipeline híbrida de dados em nuvem capaz de integrar, tratar e disponibilizar as fontes relacionadas ao Indicador Criança Alfabetizada, transformando dados públicos dispersos em uma base analítica única, confiável e auditável. A solução simula o trabalho de um time de engenharia de dados de uma organização pública de análise educacional, responsável por sustentar análises e decisões baseadas nesses dados.
 
-A ingestão dos dados combina dois modos complementares. No modo batch, cargas periódicas trazem as bases consolidadas: o indicador por UF e por município, as metas pactuadas em cada esfera, os dados territoriais e os microdados de alunos. No modo streaming, eventos simulados reproduzem um cenário real do ciclo do indicador: a chegada de novas medições e atualizações de resultados, como as da edição de 2025, que ainda não constam nas bases públicas consolidadas. essa combinação permite que a base analítica se mantenha atualizada sem depender exclusivamente de cargas completas.
+A ingestão dos dados combina dois modos complementares. No modo batch, cargas periódicas trazem as bases consolidadas: o indicador por UF e por município, as metas pactuadas em cada esfera, os dados territoriais e os microdados de alunos. No modo streaming, eventos simulados reproduzem um cenário real do ciclo do indicador: a chegada de novas medições e atualizações de resultados, como as da edição de 2025, que ainda não constam nas bases públicas consolidadas. Essa combinação permite que a base analítica se mantenha atualizada sem depender exclusivamente de cargas completas.
 
 A organização dos dados segue a Arquitetura Medalhão, em três camadas com níveis crescentes de refinamento. Na camada Bronze, os dados são preservados exatamente como chegam das fontes, garantindo histórico, auditoria e capacidade de reprocessamento. Na camada Silver, os dados são limpos, padronizados e validados, e as diferentes bases são integradas por meio de chaves comuns, como o código IBGE do município, a UF e o ano. Na camada Gold, os dados são modelados para consumo analítico, com visões como o indicador por município, a comparação entre metas e resultados e a evolução temporal da alfabetização.
 
@@ -65,7 +65,7 @@ Os dados são disponibilizados pela plataforma [Base dos Dados](https://basedosd
 | `br_inep_avaliacao_alfabetizacao__alunos` | Microdados por aluno avaliado | 3.867.999 | 2023–2024 |
 | `dicionario` | Dicionário de códigos das colunas categóricas | 27 | — |
 
-A documentação completa dos schemas, chaves, relacionamentos e achados de qualidade está em [docs/dicionario_dados.md](docs/dicionario_dados.md).
+Antes de qualquer decisão de arquitetura, foi realizado um levantamento das fontes por meio do script [notebooks/levantamento_fontes_dados.py](notebooks/levantamento_fontes_dados.py), que investiga schemas, volumes, cobertura temporal, chaves de relacionamento e integridade das tabelas. Não se trata de uma análise exploratória dos dados (EDA), mas de um trabalho de reconhecimento das fontes cujo objetivo é amparar as decisões sobre a arquitetura da solução e as tecnologias utilizadas, registradas em [docs/decisoes.md](docs/decisoes.md). Os resultados completos do levantamento estão documentados em [docs/dicionario_dados.md](docs/dicionario_dados.md).
 
 ## 4. Arquitetura da solução
 
@@ -117,8 +117,8 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 ├── docs/              # documentação técnica e de negócio
 │   ├── dicionario_dados.md
 │   └── sobre_o_indicador.md
-├── notebooks/         # exploração e estudos
-│   └── exploracao_dados.py
+├── notebooks/         # levantamentos e estudos (não fazem parte da pipeline)
+│   └── levantamento_fontes_dados.py
 └── config/            # parâmetros e schemas (sem credenciais)
 ```
 
