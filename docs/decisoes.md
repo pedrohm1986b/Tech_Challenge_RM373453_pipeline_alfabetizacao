@@ -77,3 +77,17 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 | D-008 | Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
 | D-009 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
 | D-010 | Ferramenta de orquestração | 7.1 |
+
+---
+
+## Discussões futuras
+
+Ideias avaliadas e não adotadas agora, registradas com as condições que justificariam retomá-las.
+
+### F-001 · Derivação dos agregados a partir dos microdados (potencial economia)
+
+**Contexto:** a verificação da D-005 mostrou que 95,8% das taxas municipais são reproduzíveis a partir dos microdados de alunos com o peso amostral. Se a pipeline derivasse as agregações por conta própria, a ingestão das tabelas consolidadas (`uf`, `municipio`) poderia ser dispensada, reduzindo consultas à fonte, volume armazenado e dependência do calendário de publicação do INEP.
+
+**Por que não agora:** a derivação não reproduz o dado oficial na totalidade. Em 2023, 643 municípios constam no consolidado sem microdados públicos correspondentes, e cerca de 4% dos valores divergem por regras do cálculo oficial não documentadas publicamente. Substituir a fonte pelo derivado criaria um ponto cego exatamente nos municípios menores.
+
+**Gatilhos para retomar:** cobertura completa dos microdados nas próximas edições, ou documentação oficial do método de cálculo que permita reproduzir os refinamentos do INEP.
