@@ -153,7 +153,7 @@ flowchart LR
     GD --> ML
 ```
 
-Os nomes dos serviços de mensageria e de processamento serão adicionados ao diagrama quando essas escolhas forem tomadas, conforme a tabela de decisões pendentes do [diário de decisões](docs/decisoes.md).
+O diagrama representa a **visão de componentes** da pipeline: quais peças existem e como se conectam. Ele não especifica o conteúdo que trafega em cada conexão. Duas evoluções previstas completarão essa lacuna: os nomes dos serviços de mensageria e de processamento serão adicionados quando essas escolhas forem tomadas, e a **visão do fluxo do dado** (o payload dos eventos, seus campos e transformações a cada passo) será documentada na etapa de streaming, quando o contrato do evento for definido. Ambas constam na tabela de decisões pendentes do [diário de decisões](docs/decisoes.md).
 
 ### 4.5 Componentes e serviços
 
