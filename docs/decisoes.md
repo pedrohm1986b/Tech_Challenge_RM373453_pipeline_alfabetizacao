@@ -54,12 +54,26 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-005 · Classificação das fontes: batch para consolidados, streaming no nível do aluno
+
+**Data:** 07/07/2026 · **Etapa:** Arquitetura
+
+**Decisão:** a ingestão batch cobre as fontes consolidadas e de mudança esporádica: diretório de municípios, metas pactuadas e o histórico do indicador e dos microdados de 2023 e 2024. O streaming simulado opera no nível do aluno, reproduzindo a chegada contínua de resultados da avaliação de 2025, que a pipeline agrega para atualizar o indicador por município e UF.
+
+**Contexto:** o enunciado exige ingestão híbrida e cita como exemplos de eventos a atualização de indicadores e novas medições de desempenho, mas a definição de qual fonte flui por qual modo é uma decisão de arquitetura do time.
+
+**Justificativa:** o critério adotado é a dinâmica natural de produção de cada dado. Cadastros e metas mudam raramente e são publicados de forma consolidada; resultados de avaliação nascem continuamente durante o período de aplicação das provas. Além disso, as tabelas agregadas (`uf` e `municipio`) são derivadas dos microdados: em uma operação real, seriam produzidas pela própria pipeline, e não consumidas como fonte. O streaming no nível do aluno é o cenário mais fiel à realidade e ainda exercita agregação em fluxo, um dos objetivos de aprendizado do projeto.
+
+**Alternativas consideradas:** simular eventos de atualização do indicador municipal já consolidado. Descartada por ser menos fiel à dinâmica real, já que indicadores consolidados são publicados em lote, e por empobrecer o papel da pipeline, que apenas substituiria valores em vez de calcular a agregação.
+
+---
+
 ## Decisões pendentes
 
 | ID previsto | Tema | Sessão prevista |
 |---|---|---|
-| D-005 | Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
-| D-006 | Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
-| D-007 | Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
-| D-008 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
-| D-009 | Ferramenta de orquestração | 7.1 |
+| D-006 | Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
+| D-007 | Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
+| D-008 | Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
+| D-009 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
+| D-010 | Ferramenta de orquestração | 7.1 |
