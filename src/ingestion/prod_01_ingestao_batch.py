@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Ingestão batch das fontes consolidadas para a camada Bronze do data lake.
 
-Código promovido do notebook `notebooks/desenv_ingestao_batch.ipynb`, onde o
+Código promovido do notebook `notebooks/desenv_01_ingestao_batch.ipynb`, onde o
 desenvolvimento está documentado célula a célula, com os conceitos das aulas
 de origem e as evidências de execução.
 
@@ -18,7 +18,7 @@ O que este script faz:
    divergência, permitindo que a orquestração detecte a falha.
 
 Execução:
-    python src/ingestion/prod_ingestao_batch.py
+    python src/ingestion/prod_01_ingestao_batch.py
 
 Propriedades:
 - Idempotência por sobrescrita de partição: reexecutar no mesmo dia substitui

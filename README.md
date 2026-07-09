@@ -214,7 +214,7 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
 3. **Configure o projeto:** copie `config/config.example.json` para `config/config.json` e preencha com o ID do seu projeto GCP e um nome de bucket próprio (nomes de bucket são únicos globalmente);
 4. **Execute a ingestão batch:**
    ```
-   python src/ingestion/prod_ingestao_batch.py
+   python src/ingestion/prod_01_ingestao_batch.py
    ```
    Na primeira execução, o navegador abrirá solicitando a autorização da sua conta Google (BigQuery e Cloud Storage). O bucket do data lake é criado automaticamente caso não exista. A carga completa das 7 tabelas leva alguns minutos (a tabela `alunos` tem 3,9 milhões de linhas);
 5. **Verificação manual:** acesse `https://console.cloud.google.com/storage/browser/<SEU_BUCKET>` e confira a árvore `bronze/<tabela>/data_ingestao=<data>/`. O relatório impresso pelo script mostra as contagens e a reconciliação com a fonte.
@@ -226,12 +226,12 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 ```
 ├── src/                                   # código de produção (prefixo prod_)
 │   ├── ingestion/
-│   │   └── prod_ingestao_batch.py         # ingestão batch → Bronze
+│   │   └── prod_01_ingestao_batch.py         # ingestão batch → Bronze
 │   ├── transform/                         # bronze → silver → gold (Etapas 5 e 6)
 │   └── quality/                           # validações e quarentena (Etapa 5)
 ├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
-│   ├── desenv_levantamento_fontes_dados.py
-│   └── desenv_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+│   ├── desenv_00_levantamento_fontes_dados.py
+│   └── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
 ├── docs/
 │   ├── dicionario_dados.md
 │   ├── sobre_o_indicador.md
@@ -246,11 +246,11 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 
 | Desenvolvimento (`notebooks/`) | Produção (`src/`) | Etapa do roadmap |
 |---|---|---|
-| `desenv_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
-| `desenv_ingestao_batch.ipynb` | `ingestion/prod_ingestao_batch.py` | 3 |
-| `desenv_ingestao_streaming.ipynb` (previsto) | `ingestion/prod_ingestao_streaming.py` | 4 |
-| `desenv_bronze_to_silver.ipynb` (previsto) | `transform/prod_bronze_to_silver.py` | 5 |
-| `desenv_silver_to_gold.ipynb` (previsto) | `transform/prod_silver_to_gold.py` | 6 |
+| `desenv_00_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
+| `desenv_01_ingestao_batch.ipynb` | `ingestion/prod_01_ingestao_batch.py` | 3 |
+| `desenv_02_ingestao_streaming.ipynb` (previsto) | `ingestion/prod_02_ingestao_streaming.py` | 4 |
+| `desenv_03_bronze_to_silver.ipynb` (previsto) | `transform/prod_03_bronze_to_silver.py` | 5 |
+| `desenv_04_silver_to_gold.ipynb` (previsto) | `transform/prod_04_silver_to_gold.py` | 6 |
 
 ## 13. Status e roadmap
 
