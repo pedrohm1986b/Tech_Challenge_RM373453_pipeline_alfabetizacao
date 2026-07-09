@@ -96,6 +96,20 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-008 · Convenção de desenvolvimento e produção: notebooks `desenv_`, scripts `prod_`
+
+**Data:** 09/07/2026 · **Etapa:** Ingestão batch
+
+**Decisão:** cada componente da pipeline é desenvolvido em um notebook em `notebooks/`, com o prefixo `desenv_`, contendo a documentação célula a célula (passos, conceitos com referência às aulas e evidências de execução). Quando o código é validado, ele é promovido para um script em `src/`, com o prefixo `prod_` e o mesmo nome-base (exemplo: `desenv_ingestao_batch.ipynb` e `prod_ingestao_batch.py`). Os cabeçalhos dos dois arquivos referenciam o par correspondente, e o README mantém a tabela de correspondência entre desenvolvimento, produção e etapa do roadmap.
+
+**Contexto:** o desenvolvimento em notebook favorece a cocriação e o registro didático, mas a versão executada pela orquestração precisa ser um script. Era necessário um padrão de nomes que deixasse a correspondência evidente para o avaliador.
+
+**Justificativa:** o prefixo explicita o estágio do artefato e o nome-base comum estabelece o vínculo entre os pares. A promoção do notebook validado para script funciona como revisão final do código e reflete prática comum de mercado (prototipação em notebook, produção em módulo).
+
+**Alternativas consideradas:** numeração antes do prefixo (`01_desenv_...`), descartada porque módulos Python não podem iniciar com dígito, o que inviabilizaria a importação dos scripts pela orquestração; nomes sem prefixo, descartados por não explicitarem o estágio de cada artefato.
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.

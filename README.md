@@ -204,22 +204,53 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 
 ## 11. Como executar
 
-🚧 Em construção. Evolui a cada etapa do projeto.
+Pré-requisitos: Python 3.11 ou superior e uma conta Google.
+
+1. **Crie um projeto no Google Cloud** (gratuito, sem cartão): <https://console.cloud.google.com/projectcreate>. Anote o ID do projeto;
+2. **Instale as dependências:**
+   ```
+   pip install -r requirements.txt
+   ```
+3. **Configure o projeto:** copie `config/config.example.json` para `config/config.json` e preencha com o ID do seu projeto GCP e um nome de bucket próprio (nomes de bucket são únicos globalmente);
+4. **Execute a ingestão batch:**
+   ```
+   python src/ingestion/prod_ingestao_batch.py
+   ```
+   Na primeira execução, o navegador abrirá solicitando a autorização da sua conta Google (BigQuery e Cloud Storage). O bucket do data lake é criado automaticamente caso não exista. A carga completa das 7 tabelas leva alguns minutos (a tabela `alunos` tem 3,9 milhões de linhas);
+5. **Verificação manual:** acesse `https://console.cloud.google.com/storage/browser/<SEU_BUCKET>` e confira a árvore `bronze/<tabela>/data_ingestao=<data>/`. O relatório impresso pelo script mostra as contagens e a reconciliação com a fonte.
+
+As instruções das demais etapas (streaming, transformações, orquestração) serão adicionadas conforme forem concluídas.
 
 ## 12. Estrutura do repositório
 
 ```
-├── src/
-│   ├── ingestion/     # ingestão batch e streaming (Etapas 3 e 4)
-│   ├── transform/     # transformações bronze → silver → gold (Etapas 5 e 6)
-│   └── quality/       # regras de validação e quarentena (Etapa 5)
-├── docs/              # documentação técnica e de negócio
+├── src/                                   # código de produção (prefixo prod_)
+│   ├── ingestion/
+│   │   └── prod_ingestao_batch.py         # ingestão batch → Bronze
+│   ├── transform/                         # bronze → silver → gold (Etapas 5 e 6)
+│   └── quality/                           # validações e quarentena (Etapa 5)
+├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
+│   ├── desenv_levantamento_fontes_dados.py
+│   └── desenv_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+├── docs/
 │   ├── dicionario_dados.md
-│   └── sobre_o_indicador.md
-├── notebooks/         # levantamentos e estudos (não fazem parte da pipeline)
-│   └── levantamento_fontes_dados.py
-└── config/            # parâmetros e schemas (sem credenciais)
+│   ├── sobre_o_indicador.md
+│   └── decisoes.md
+├── config/
+│   ├── config.example.json                # modelo de configuração (versionado)
+│   └── config.json                        # configuração pessoal (não versionado)
+└── requirements.txt
 ```
+
+**Convenção de desenvolvimento e produção:** cada componente da pipeline é desenvolvido em um notebook (prefixo `desenv_`, em `notebooks/`), célula a célula, com os conceitos das aulas e as evidências de execução salvas. Quando validado, o código é promovido para um script de produção (prefixo `prod_`, em `src/`), que é a versão executada pela orquestração. Os pares compartilham o mesmo nome-base e referenciam um ao outro nos cabeçalhos.
+
+| Desenvolvimento (`notebooks/`) | Produção (`src/`) | Etapa do roadmap |
+|---|---|---|
+| `desenv_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
+| `desenv_ingestao_batch.ipynb` | `ingestion/prod_ingestao_batch.py` | 3 |
+| `desenv_ingestao_streaming.ipynb` (previsto) | `ingestion/prod_ingestao_streaming.py` | 4 |
+| `desenv_bronze_to_silver.ipynb` (previsto) | `transform/prod_bronze_to_silver.py` | 5 |
+| `desenv_silver_to_gold.ipynb` (previsto) | `transform/prod_silver_to_gold.py` | 6 |
 
 ## 13. Status e roadmap
 
@@ -228,7 +259,7 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 | 0 | Fundação: repositório, estrutura, README inicial | ✅ concluída |
 | 1 | Exploração dos dados e dicionário | ✅ concluída |
 | 2 | Desenho da arquitetura, diagrama e trade-offs | 🟡 em andamento |
-| 3 | Ingestão batch (camada Bronze) | ⬜ |
+| 3 | Ingestão batch (camada Bronze) | ✅ concluída |
 | 4 | Ingestão streaming simulada (camada Bronze) | ⬜ |
 | 5 | Camada Silver e qualidade de dados | ⬜ |
 | 6 | Camada Gold (datasets analíticos) | ⬜ |

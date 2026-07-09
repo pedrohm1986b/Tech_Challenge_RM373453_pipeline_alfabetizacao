@@ -1,0 +1,5 @@
+{
+  "projeto_gcp": "id-do-seu-projeto-gcp",
+  "bucket_lake": "nome-unico-do-seu-bucket",
+  "regiao": "us-central1"
+}

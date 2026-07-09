@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Configuracao pessoal (IDs do projeto/bucket de quem executa) - nao versionar
+config/config.json
