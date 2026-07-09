@@ -110,6 +110,20 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-009 · Mensageria do streaming: Google Pub/Sub
+
+**Data:** 09/07/2026 · **Etapa:** Ingestão streaming
+
+**Decisão:** a mensageria do streaming é o Google Pub/Sub, serviço gerenciado da GCP. O producer publica os eventos em um tópico Pub/Sub e o consumer os lê por meio de uma subscription, gravando micro-lotes na camada Bronze.
+
+**Contexto:** o módulo estudou streaming com Apache Kafka (aula de ETL Pipelines e notebooks de demonstração), mas o enunciado exige apenas a simulação de ingestão de eventos, sem determinar a ferramenta. A aula de Cloud Data mapeia a ingestão streaming na GCP para o Pub/Sub.
+
+**Justificativa:** o Pub/Sub reside no mesmo projeto GCP da pipeline, usa a credencial já autorizada, aparece no mesmo console e não exige administração de broker. Possui dead letter topic nativo (a DLQ do diagrama de arquitetura), retenção configurável e free tier de 10 GB/mês, muito acima do volume do projeto. Os conceitos estudados nas aulas de Kafka transferem-se diretamente: producer/publisher, consumer group/subscription, offset/ack, partição com chave/ordering key, retenção e lag/backlog. A escolha mantém a arquitetura inteira dentro de uma única nuvem, coerente com a decisão D-001.
+
+**Alternativas consideradas:** Apache Kafka em execução local, fiel à ferramenta das aulas e com operação explícita de partições e offsets. Descartado porque o broker viveria fora da nuvem do projeto, exigiria instalação e manutenção próprias e não se integraria ao console e à autenticação da GCP. O aprendizado da mecânica interna do Kafka permanece disponível nos notebooks do módulo.
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
@@ -118,9 +132,8 @@ Os identificadores são atribuídos apenas quando a decisão é tomada, para evi
 |---|---|
 | Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
 | Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
-| Mensageria do streaming (Pub/Sub ou Kafka) | 2.2 |
 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
-| Contrato do evento de streaming (payload, campos, versionamento) e diagrama do fluxo do dado | 4.1 |
+| Diagrama do fluxo do dado (payload a cada passo) | 4 |
 | Ferramenta de orquestração | 7.1 |
 
 ---

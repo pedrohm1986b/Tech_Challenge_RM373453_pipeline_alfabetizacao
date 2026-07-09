@@ -10,3 +10,4 @@ google-cloud-bigquery-storage    # API de download em alta velocidade do BigQuer
                                  # (sem ela, extração de milhões de linhas usa a
                                  # API REST e leva dezenas de minutos)
 gcsfs                            # permite ao pandas ler/gravar em gs://
+google-cloud-pubsub              # mensageria do streaming (topico, subscription, DLQ)

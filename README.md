@@ -119,7 +119,7 @@ flowchart LR
         SIM["Sistema de avaliação<br>simulado (Producer)<br><i>resultados de alunos<br>ciclo 2025</i>"]
     end
 
-    subgraph M["Mensageria"]
+    subgraph M["Mensageria (Pub/Sub)"]
         T[/"tópico de eventos<br><i>(partições)</i>"/]
         DLQ[/"DLQ<br><i>eventos malformados</i>"/]
     end
@@ -168,7 +168,15 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 
 ### 4.5 Componentes e serviços
 
-🚧 Em definição. Depende das decisões pendentes de mensageria do streaming e de motor de processamento, registradas no [diário de decisões](docs/decisoes.md).
+| Função na arquitetura | Serviço | Situação |
+|---|---|---|
+| Fonte de extração | BigQuery público (Base dos Dados) | definido (D-002) |
+| Data lake (camadas do medalhão) | Google Cloud Storage | definido (D-006) |
+| Mensageria do streaming (tópico e DLQ) | Google Pub/Sub | definido (D-009) |
+| Motor de processamento da Silver | 🚧 pendente (PySpark ou SQL no BigQuery) | decisão prevista |
+| Orquestração | 🚧 pendente | decisão prevista |
+
+As justificativas de cada escolha estão no [diário de decisões](docs/decisoes.md). O contrato dos eventos de streaming está em [config/schemas/evento_resultado_aluno.md](config/schemas/evento_resultado_aluno.md).
 
 ## 5. Tecnologias utilizadas
 
@@ -179,6 +187,9 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 | Google Cloud Platform (GCP) | Nuvem do projeto | A fonte de dados é distribuída via BigQuery público da Base dos Dados, o que elimina movimentação inicial de dados; o free tier cobre o volume do projeto |
 | BigQuery | Fonte de extração e camada de consulta | Acesso SQL direto às tabelas públicas; consultas dentro do free tier de 1 TB/mês |
 | Python | Linguagem da pipeline | Ecossistema consolidado de engenharia de dados; bibliotecas `pandas-gbq` e `google-cloud-bigquery` |
+| Google Cloud Storage | Data lake (Bronze, Silver, Gold e quarentena) | Object storage durável e de baixo custo; free tier de 5 GB/mês cobre o volume do projeto; mesma região da fonte evita custo de transferência |
+| Parquet | Formato de armazenamento das camadas | Colunar e comprimido; na tabela de alunos ficou 3,0 vezes menor que o equivalente em CSV (medição do projeto) |
+| Google Pub/Sub | Mensageria do streaming | Serviço gerenciado no mesmo projeto GCP; dead letter topic nativo; conceitos equivalentes aos estudados nas aulas de Kafka (ver D-009) |
 
 As demais escolhas (mensageria de streaming, processamento, orquestração) serão definidas e justificadas na Etapa 2.
 
