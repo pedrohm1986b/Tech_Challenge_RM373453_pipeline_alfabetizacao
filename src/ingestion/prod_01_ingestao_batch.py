@@ -7,6 +7,7 @@ de origem e as evidências de execução.
 
 O que este script faz:
 1. lê a configuração em `config/config.json` (ver `config/config.example.json`);
+(Esta parte é muito importante, pois o avaliador deve criar um projeto atribuido à sua própria conta no Google Cloud para poder rodar o pipeline.)
 2. autoriza o acesso ao Google Cloud (o navegador abre na primeira execução;
    a credencial fica armazenada na máquina);
 3. garante a existência do bucket do data lake;
@@ -31,6 +32,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -136,22 +138,61 @@ def main() -> int:
     cliente = storage.Client(project=cfg["projeto_gcp"], credentials=credenciais)
     garantir_bucket(cliente, cfg["bucket_lake"], cfg["regiao"])
 
+    inicio = datetime.now(timezone.utc)
+    total = len(TABELAS_BATCH)
+
     resultados = []
-    for tabela in TABELAS_BATCH:
+    for i, tabela in enumerate(TABELAS_BATCH, start=1):
+        # Progresso em tempo real: qual tabela, posicao na fila e duracao.
+        # flush=True garante que a mensagem aparece antes da carga comecar.
+        print(f"[{i}/{total}] Ingerindo {tabela}...", flush=True)
+        t0 = time.time()
         r = ingerir_tabela(tabela, cfg, credenciais)
+        r["duracao_s"] = time.time() - t0
         resultados.append(r)
         print(
-            f"  {r['tabela']:<32} {r['linhas']:>10,} linhas   "
-            f"reconciliacao: {r['reconciliacao']}"
+            f"        {r['linhas']:>10,} linhas   "
+            f"reconciliacao: {r['reconciliacao']}   "
+            f"({r['duracao_s']:.0f}s)"
         )
 
+    # -----------------------------------------------------------------
+    # Resumo da execucao: validacao final do processamento
+    # -----------------------------------------------------------------
     divergentes = [r for r in resultados if r["reconciliacao"] != "OK"]
-    print()
-    if divergentes:
-        print(f"FALHA: {len(divergentes)} tabela(s) com divergencia de contagem.")
-        return 1
+    linhas_totais = sum(r["linhas"] for r in resultados)
+    duracao_min = (datetime.now(timezone.utc) - inicio).total_seconds() / 60
 
-    print(f"Ingestao batch concluida: {len(resultados)} tabelas reconciliadas.")
+    # Volume real gravado no lake na particao de hoje (conferencia fisica)
+    dia = inicio.strftime("%Y-%m-%d")
+    bytes_lake = sum(
+        blob.size
+        for tabela in TABELAS_BATCH
+        for blob in cliente.list_blobs(
+            cfg["bucket_lake"], prefix=f"bronze/{tabela}/data_ingestao={dia}/"
+        )
+    )
+
+    print()
+    print("=" * 60)
+    print("RESUMO DA EXECUCAO")
+    print(f"  Tabelas ingeridas:      {len(resultados)} de {len(TABELAS_BATCH)}")
+    print(f"  Reconciliacao:          {len(resultados) - len(divergentes)} OK, "
+          f"{len(divergentes)} divergente(s)")
+    print(f"  Linhas totais:          {linhas_totais:,}")
+    print(f"  Volume gravado (lake):  {bytes_lake / 1024 / 1024:.1f} MB")
+    print(f"  Particao da carga:      data_ingestao={dia}")
+    print(f"  Bucket:                 gs://{cfg['bucket_lake']}/bronze/")
+    print(f"  Duracao total:          {duracao_min:.1f} min")
+    status = "FALHA" if divergentes else "SUCESSO"
+    print(f"  Status final:           {status}")
+    print("=" * 60)
+
+    if divergentes:
+        for r in divergentes:
+            print(f"  DIVERGENCIA em {r['tabela']}: "
+                  f"fonte={r['fonte']:,} vs gravado={r['linhas']:,}")
+        return 1
     return 0
 
 
