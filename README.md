@@ -230,26 +230,37 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
    Na primeira execução, o navegador abrirá solicitando a autorização da sua conta Google (BigQuery e Cloud Storage). O bucket do data lake é criado automaticamente caso não exista. A carga completa das 7 tabelas leva alguns minutos (a tabela `alunos` tem 3,9 milhões de linhas);
 5. **Verificação manual:** acesse `https://console.cloud.google.com/storage/browser/<SEU_BUCKET>` e confira a árvore `bronze/<tabela>/data_ingestao=<data>/`. O relatório impresso pelo script mostra as contagens e a reconciliação com a fonte.
 
-As instruções das demais etapas (streaming, transformações, orquestração) serão adicionadas conforme forem concluídas.
+6. **Execute a ingestão streaming** (dois terminais ou em sequência):
+   ```
+   python src/ingestion/prod_02_ingestao_streaming.py publicar --eventos 200
+   python src/ingestion/prod_02_ingestao_streaming.py consumir
+   ```
+   O modo `publicar` simula o sistema externo de avaliação emitindo resultados do ciclo de 2025; o modo `consumir` lê o backlog, valida contra o contrato, desvia malformados para a DLQ, descarta duplicatas (registro persistido em `controle/` no bucket) e grava o micro-lote em `bronze/eventos_resultado_aluno/`. A infraestrutura de mensageria (tópicos e subscriptions) é criada automaticamente na primeira execução.
+
+As instruções das demais etapas (transformações, orquestração) serão adicionadas conforme forem concluídas.
 
 ## 12. Estrutura do repositório
 
 ```
 ├── src/                                   # código de produção (prefixo prod_)
 │   ├── ingestion/
-│   │   └── prod_01_ingestao_batch.py         # ingestão batch → Bronze
+│   │   ├── prod_01_ingestao_batch.py         # ingestão batch → Bronze
+│   │   └── prod_02_ingestao_streaming.py     # producer e consumer do streaming
 │   ├── transform/                         # bronze → silver → gold (Etapas 5 e 6)
 │   └── quality/                           # validações e quarentena (Etapa 5)
 ├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
 │   ├── desenv_00_levantamento_fontes_dados.py
-│   └── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+│   ├── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+│   └── desenv_02_ingestao_streaming.ipynb    # desenvolvimento da ingestão streaming
 ├── docs/
 │   ├── dicionario_dados.md
 │   ├── sobre_o_indicador.md
 │   └── decisoes.md
 ├── config/
 │   ├── config.example.json                # modelo de configuração (versionado)
-│   └── config.json                        # configuração pessoal (não versionado)
+│   ├── config.json                        # configuração pessoal (não versionado)
+│   └── schemas/
+│       └── evento_resultado_aluno.md      # contrato do evento de streaming
 └── requirements.txt
 ```
 
@@ -259,7 +270,7 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 |---|---|---|
 | `desenv_00_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
 | `desenv_01_ingestao_batch.ipynb` | `ingestion/prod_01_ingestao_batch.py` | 3 |
-| `desenv_02_ingestao_streaming.ipynb` (previsto) | `ingestion/prod_02_ingestao_streaming.py` | 4 |
+| `desenv_02_ingestao_streaming.ipynb` | `ingestion/prod_02_ingestao_streaming.py` | 4 |
 | `desenv_03_bronze_to_silver.ipynb` (previsto) | `transform/prod_03_bronze_to_silver.py` | 5 |
 | `desenv_04_silver_to_gold.ipynb` (previsto) | `transform/prod_04_silver_to_gold.py` | 6 |
 
@@ -271,7 +282,7 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 | 1 | Exploração dos dados e dicionário | ✅ concluída |
 | 2 | Desenho da arquitetura, diagrama e trade-offs | 🟡 em andamento |
 | 3 | Ingestão batch (camada Bronze) | ✅ concluída |
-| 4 | Ingestão streaming simulada (camada Bronze) | ⬜ |
+| 4 | Ingestão streaming simulada (camada Bronze) | ✅ concluída |
 | 5 | Camada Silver e qualidade de dados | ⬜ |
 | 6 | Camada Gold (datasets analíticos) | ⬜ |
 | 7 | Orquestração e monitoramento | ⬜ |
