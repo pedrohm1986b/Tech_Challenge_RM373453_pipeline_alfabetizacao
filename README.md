@@ -119,7 +119,7 @@ flowchart LR
         SIM["Sistema de avaliação<br>simulado (Producer)<br><i>resultados de alunos<br>ciclo 2025</i>"]
     end
 
-    subgraph M["Mensageria"]
+    subgraph M["Mensageria (Pub/Sub)"]
         T[/"tópico de eventos<br><i>(partições)</i>"/]
         DLQ[/"DLQ<br><i>eventos malformados</i>"/]
     end
@@ -168,7 +168,15 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 
 ### 4.5 Componentes e serviços
 
-🚧 Em definição. Depende das decisões pendentes de mensageria do streaming e de motor de processamento, registradas no [diário de decisões](docs/decisoes.md).
+| Função na arquitetura | Serviço | Situação |
+|---|---|---|
+| Fonte de extração | BigQuery público (Base dos Dados) | definido (D-002) |
+| Data lake (camadas do medalhão) | Google Cloud Storage | definido (D-006) |
+| Mensageria do streaming (tópico e DLQ) | Google Pub/Sub | definido (D-009) |
+| Motor de processamento da Silver | 🚧 pendente (PySpark ou SQL no BigQuery) | decisão prevista |
+| Orquestração | 🚧 pendente | decisão prevista |
+
+As justificativas de cada escolha estão no [diário de decisões](docs/decisoes.md). O contrato dos eventos de streaming está em [config/schemas/evento_resultado_aluno.md](config/schemas/evento_resultado_aluno.md).
 
 ## 5. Tecnologias utilizadas
 
@@ -179,6 +187,9 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 | Google Cloud Platform (GCP) | Nuvem do projeto | A fonte de dados é distribuída via BigQuery público da Base dos Dados, o que elimina movimentação inicial de dados; o free tier cobre o volume do projeto |
 | BigQuery | Fonte de extração e camada de consulta | Acesso SQL direto às tabelas públicas; consultas dentro do free tier de 1 TB/mês |
 | Python | Linguagem da pipeline | Ecossistema consolidado de engenharia de dados; bibliotecas `pandas-gbq` e `google-cloud-bigquery` |
+| Google Cloud Storage | Data lake (Bronze, Silver, Gold e quarentena) | Object storage durável e de baixo custo; free tier de 5 GB/mês cobre o volume do projeto; mesma região da fonte evita custo de transferência |
+| Parquet | Formato de armazenamento das camadas | Colunar e comprimido; na tabela de alunos ficou 3,0 vezes menor que o equivalente em CSV (medição do projeto) |
+| Google Pub/Sub | Mensageria do streaming | Serviço gerenciado no mesmo projeto GCP; dead letter topic nativo; conceitos equivalentes aos estudados nas aulas de Kafka (ver D-009) |
 
 As demais escolhas (mensageria de streaming, processamento, orquestração) serão definidas e justificadas na Etapa 2.
 
@@ -219,26 +230,37 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
    Na primeira execução, o navegador abrirá solicitando a autorização da sua conta Google (BigQuery e Cloud Storage). O bucket do data lake é criado automaticamente caso não exista. A carga completa das 7 tabelas leva alguns minutos (a tabela `alunos` tem 3,9 milhões de linhas);
 5. **Verificação manual:** acesse `https://console.cloud.google.com/storage/browser/<SEU_BUCKET>` e confira a árvore `bronze/<tabela>/data_ingestao=<data>/`. O relatório impresso pelo script mostra as contagens e a reconciliação com a fonte.
 
-As instruções das demais etapas (streaming, transformações, orquestração) serão adicionadas conforme forem concluídas.
+6. **Execute a ingestão streaming** (dois terminais ou em sequência):
+   ```
+   python src/ingestion/prod_02_ingestao_streaming.py publicar --eventos 200
+   python src/ingestion/prod_02_ingestao_streaming.py consumir
+   ```
+   O modo `publicar` simula o sistema externo de avaliação emitindo resultados do ciclo de 2025; o modo `consumir` lê o backlog, valida contra o contrato, desvia malformados para a DLQ, descarta duplicatas (registro persistido em `controle/` no bucket) e grava o micro-lote em `bronze/eventos_resultado_aluno/`. A infraestrutura de mensageria (tópicos e subscriptions) é criada automaticamente na primeira execução.
+
+As instruções das demais etapas (transformações, orquestração) serão adicionadas conforme forem concluídas.
 
 ## 12. Estrutura do repositório
 
 ```
 ├── src/                                   # código de produção (prefixo prod_)
 │   ├── ingestion/
-│   │   └── prod_01_ingestao_batch.py         # ingestão batch → Bronze
+│   │   ├── prod_01_ingestao_batch.py         # ingestão batch → Bronze
+│   │   └── prod_02_ingestao_streaming.py     # producer e consumer do streaming
 │   ├── transform/                         # bronze → silver → gold (Etapas 5 e 6)
 │   └── quality/                           # validações e quarentena (Etapa 5)
 ├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
 │   ├── desenv_00_levantamento_fontes_dados.py
-│   └── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+│   ├── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
+│   └── desenv_02_ingestao_streaming.ipynb    # desenvolvimento da ingestão streaming
 ├── docs/
 │   ├── dicionario_dados.md
 │   ├── sobre_o_indicador.md
 │   └── decisoes.md
 ├── config/
 │   ├── config.example.json                # modelo de configuração (versionado)
-│   └── config.json                        # configuração pessoal (não versionado)
+│   ├── config.json                        # configuração pessoal (não versionado)
+│   └── schemas/
+│       └── evento_resultado_aluno.md      # contrato do evento de streaming
 └── requirements.txt
 ```
 
@@ -248,7 +270,7 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 |---|---|---|
 | `desenv_00_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
 | `desenv_01_ingestao_batch.ipynb` | `ingestion/prod_01_ingestao_batch.py` | 3 |
-| `desenv_02_ingestao_streaming.ipynb` (previsto) | `ingestion/prod_02_ingestao_streaming.py` | 4 |
+| `desenv_02_ingestao_streaming.ipynb` | `ingestion/prod_02_ingestao_streaming.py` | 4 |
 | `desenv_03_bronze_to_silver.ipynb` (previsto) | `transform/prod_03_bronze_to_silver.py` | 5 |
 | `desenv_04_silver_to_gold.ipynb` (previsto) | `transform/prod_04_silver_to_gold.py` | 6 |
 
@@ -260,7 +282,7 @@ As instruções das demais etapas (streaming, transformações, orquestração) 
 | 1 | Exploração dos dados e dicionário | ✅ concluída |
 | 2 | Desenho da arquitetura, diagrama e trade-offs | 🟡 em andamento |
 | 3 | Ingestão batch (camada Bronze) | ✅ concluída |
-| 4 | Ingestão streaming simulada (camada Bronze) | ⬜ |
+| 4 | Ingestão streaming simulada (camada Bronze) | ✅ concluída |
 | 5 | Camada Silver e qualidade de dados | ⬜ |
 | 6 | Camada Gold (datasets analíticos) | ⬜ |
 | 7 | Orquestração e monitoramento | ⬜ |
