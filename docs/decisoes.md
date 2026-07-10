@@ -124,14 +124,40 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-010 · Rede de ensino de referência: rede Pública (código 5)
+
+**Data:** 10/07/2026 · **Etapa:** Preparação da Silver
+
+**Decisão:** as análises principais, a comparação com as metas e as visões da camada Gold usam a rede Pública (código 5, Estadual e Municipal) como recorte de referência. As redes individuais permanecem disponíveis na Silver para análises detalhadas.
+
+**Contexto:** a coluna `rede` das tabelas agregadas mistura redes individuais (códigos 1 a 4) e agregados (0, 5 e 6); somar linhas de códigos diferentes conta o mesmo aluno mais de uma vez. Era necessário definir a lente oficial das análises.
+
+**Justificativa:** as metas do Compromisso Nacional Criança Alfabetizada são pactuadas para a rede pública, e os resultados nacionais oficiais (55,9% em 2023, 59,2% em 2024, 66,0% em 2025) referem-se a ela. A verificação empírica mostrou que, na tabela `uf`, apenas os códigos 2, 3 e 5 ocorrem (o 0 tem uma única linha em 2024 e o 6 não existe), tornando o código 5 o único agregado viável.
+
+**Alternativas consideradas:** código 0 (Total), descartado pela cobertura quase inexistente nas tabelas; trabalhar apenas com redes individuais, descartado por impedir a comparação direta com as metas pactuadas.
+
+---
+
+## D-011 · Alunos ausentes: preservação com flag e dupla métrica na Gold
+
+**Data:** 10/07/2026 · **Etapa:** Preparação da Silver
+
+**Decisão:** a Silver preserva todos os alunos, presentes e ausentes, com a flag `presente`; nada é descartado. As visões da Gold publicam três medidas por recorte: `taxa_oficial` (método INEP: alunos presentes ponderados pelo peso amostral), `taxa_ajustada` (cenário conservador: ausentes contados como não alfabetizados, funcionando como piso da taxa) e `percentual_participacao`. As regras de qualidade tratam nulos de forma condicional: proficiência e peso nulos são legítimos em ausentes; um presente com proficiência nula, ou um ausente com proficiência preenchida, são anomalias e vão para a quarentena.
+
+**Contexto:** cerca de 513 mil alunos por ano (um quarto dos classificados como não alfabetizados) não fizeram a prova e têm proficiência e peso nulos. Toda agregação exige uma regra explícita para esses casos.
+
+**Justificativa:** o método oficial garante comparabilidade com as publicações do INEP (foi ele que reproduziu 95,8% das taxas municipais na verificação empírica). O cenário conservador expõe a incerteza causada pela ausência: a distância entre as duas taxas cresce onde a participação é baixa, o que serve à priorização de municípios e aos modelos de IA. A flag preserva a flexibilidade analítica sem abrir mão da consistência nas visões prontas.
+
+**Alternativas consideradas:** descartar os ausentes na Silver (perderia os estudos de participação e ausência); contar ausentes como não alfabetizados na métrica única (divergiria dos números oficiais); flexibilidade sem padrão definido na Gold (tornaria os números oficiais irreproduzíveis entre análises).
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
 
 | Tema | Sessão prevista |
 |---|---|
-| Rede de ensino de referência para as análises (Total, Pública ou individuais) | 1.2 |
-| Tratamento dos alunos ausentes (proficiência nula) nas análises | 1.2 |
 | Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
 | Diagrama do fluxo do dado (payload a cada passo) | 4 |
 | Ferramenta de orquestração | 7.1 |
