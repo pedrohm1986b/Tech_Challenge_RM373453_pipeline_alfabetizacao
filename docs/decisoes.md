@@ -152,13 +152,26 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-012 · Motor da Silver: pandas, com as camadas mantidas como Parquet no lake
+
+**Data:** 10/07/2026 · **Etapa:** Preparação da Silver
+
+**Decisão:** as transformações das camadas Silver e Gold são implementadas em pandas, lendo e gravando Parquet diretamente no data lake (GCS), preservando o desenho original do medalhão como três áreas do mesmo bucket (D-006). O BigQuery entra apenas no consumo, por meio de tabelas externas sobre a camada Gold.
+
+**Contexto:** as opções mapeadas eram PySpark (aderência às aulas de processamento distribuído), SQL no BigQuery (que materializaria Silver e Gold como tabelas, alterando o desenho das camadas) e pandas (já utilizado nas ingestões).
+
+**Justificativa:** o volume do projeto (cerca de 70 MB de Bronze, 3,9 milhões de linhas na maior tabela) está muito abaixo do que justificaria processamento distribuído; dimensionar a ferramenta ao problema é prática de FinOps, e a própria disciplina do módulo alerta contra o excesso de engenharia. O pandas já foi validado nas duas ingestões (lê e grava `gs://` nativamente), a equipe o domina, e a escolha preserva a simplicidade conceitual do medalhão como três áreas do mesmo lake, sem retrabalho documental. O caminho de escala fica registrado: se o volume crescer em ordem de grandeza, as funções de transformação migram para Spark (Dataproc) sem alteração do desenho das camadas.
+
+**Alternativas consideradas:** PySpark local, descartado pelo desbalanceamento entre volume e ferramenta e pelo atrito de configuração no ambiente Windows (JVM e conector GCS); SQL no BigQuery, descartado por materializar as camadas fora do lake, alterando o desenho documentado sem necessidade para o volume atual. O estudo de PySpark permanece como aprendizado paralelo da equipe, e a comparação entre os motores integra o trade-off de custo e performance do README.
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
 
 | Tema | Sessão prevista |
 |---|---|
-| Motor de processamento da camada Silver (PySpark ou SQL no BigQuery) | 2.2 |
 | Diagrama do fluxo do dado (payload a cada passo) | 4 |
 | Ferramenta de orquestração | 7.1 |
 
