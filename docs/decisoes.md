@@ -166,6 +166,20 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-013 · Meta vigente: safra mais recente da publicação municipal, sem fallback
+
+**Data:** 11/07/2026 · **Etapa:** Transformação Bronze → Silver
+
+**Decisão:** a comparação meta × resultado usa exclusivamente a safra mais recente disponível na tabela municipal de metas (`ano_referencia` máximo; hoje, 2024). Municípios avaliados sem meta nessa safra permanecem com meta nula, na categoria documentada "sem meta na safra vigente", sem fallback para safras anteriores.
+
+**Contexto:** as metas municipais existem em duas safras (2023 e 2024), com valores renegociados entre elas. A integração da Silver revelou 284 municípios com resultado em 2024 e sem meta na safra vigente, divididos em dois grupos: 164 não constam em nenhuma safra (ausência total de pactuação na fonte) e 120 tinham meta na safra 2023 e saíram da publicação de 2024. O perfil é de municípios pequenos (RS, SC e MG lideram a distribuição), com taxas de alfabetização baixas na amostra.
+
+**Justificativa:** se um município saiu da repactuação mais recente, não é possível afirmar que a meta antiga permanece válida; um fallback compararia o resultado de 2024 com uma pactuação potencialmente revista, apresentando inferência como fato. O nulo documentado é o tratamento honesto: cerca de 5,1% dos municípios avaliados na rede pública ficam fora da comparação com meta na Gold, e essa exclusão é declarada em vez de mascarada. Como a seleção usa o máximo disponível em vez de um ano fixo, a regra adota automaticamente a safra municipal de 2025 quando a fonte a publicar.
+
+**Alternativas consideradas:** fallback por município para a última safra em que ele aparece. Preservaria a meta dos 120, mas misturaria publicações diferentes na mesma comparação e trataria como vigente uma pactuação possivelmente revogada.
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
