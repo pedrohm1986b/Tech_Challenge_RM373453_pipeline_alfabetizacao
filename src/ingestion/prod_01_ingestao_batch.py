@@ -44,17 +44,25 @@ from google.cloud import storage
 # Constantes da fonte (públicas, iguais para qualquer executor)
 # ---------------------------------------------------------------------------
 FONTE = "basedosdados.br_inep_avaliacao_alfabetizacao"
+FONTE_DIRETORIOS = "basedosdados.br_bd_diretorios_brasil"
 
-# Tabelas ingeridas por batch (decisão D-005 do diário de decisões)
-TABELAS_BATCH = [
-    "uf",
-    "municipio",
-    "meta_alfabetizacao_brasil",
-    "meta_alfabetizacao_uf",
-    "meta_alfabetizacao_municipio",
-    "dicionario",
-    "alunos",
-]
+# Tabelas ingeridas por batch (decisão D-005 do diário de decisões):
+# nome da tabela na Bronze -> tabela qualificada na fonte
+TABELAS_BATCH = {
+    "uf": f"{FONTE}.uf",
+    "municipio": f"{FONTE}.municipio",
+    "meta_alfabetizacao_brasil": f"{FONTE}.meta_alfabetizacao_brasil",
+    "meta_alfabetizacao_uf": f"{FONTE}.meta_alfabetizacao_uf",
+    "meta_alfabetizacao_municipio": f"{FONTE}.meta_alfabetizacao_municipio",
+    "dicionario": f"{FONTE}.dicionario",
+    "alunos": f"{FONTE}.alunos",
+    # Diretório de municípios do IBGE, a única tabela de DIMENSÃO da carga.
+    # As 7 tabelas do INEP são fatos: registram medidas (taxas, proficiências)
+    # por chave, e nenhuma traduz o id_municipio em nome, UF e região. Sem a
+    # dimensão, as camadas analíticas entregariam apenas códigos. Necessidade
+    # identificada na integração da camada Silver (desenv_03, Seção 5).
+    "diretorio_municipio": f"{FONTE_DIRETORIOS}.municipio",
+}
 
 # Escopo amplo: cobre BigQuery (extração) e Cloud Storage (gravação)
 ESCOPOS = ["https://www.googleapis.com/auth/cloud-platform"]
@@ -82,7 +90,7 @@ def garantir_bucket(cliente: storage.Client, nome: str, regiao: str) -> None:
         print(f"Bucket criado: gs://{nome} (regiao {regiao})")
 
 
-def ingerir_tabela(tabela: str, cfg: dict, credenciais) -> dict:
+def ingerir_tabela(tabela: str, fonte_tabela: str, cfg: dict, credenciais) -> dict:
     """Ingere uma tabela da fonte para a Bronze e devolve as métricas da carga.
 
     Ciclo validado no notebook de desenvolvimento (Seções 4 a 6):
@@ -90,7 +98,7 @@ def ingerir_tabela(tabela: str, cfg: dict, credenciais) -> dict:
     """
     # 1. Extração full da fonte
     df = pandas_gbq.read_gbq(
-        f"SELECT * FROM `{FONTE}.{tabela}`",
+        f"SELECT * FROM `{fonte_tabela}`",
         project_id=cfg["projeto_gcp"],
         credentials=credenciais,
         progress_bar_type=None,
@@ -99,7 +107,7 @@ def ingerir_tabela(tabela: str, cfg: dict, credenciais) -> dict:
     # 2. Metadados de ingestão (rastreabilidade da Bronze)
     momento = datetime.now(timezone.utc)
     df["_ingestion_timestamp"] = momento.isoformat()
-    df["_source"] = f"{FONTE}.{tabela}"
+    df["_source"] = fonte_tabela
 
     # 3. Gravação em Parquet, particionada por data de ingestão
     dia = momento.strftime("%Y-%m-%d")
@@ -111,7 +119,7 @@ def ingerir_tabela(tabela: str, cfg: dict, credenciais) -> dict:
 
     # 4. Reconciliação de contagens fonte x Bronze
     qtd_fonte = pandas_gbq.read_gbq(
-        f"SELECT COUNT(*) AS n FROM `{FONTE}.{tabela}`",
+        f"SELECT COUNT(*) AS n FROM `{fonte_tabela}`",
         project_id=cfg["projeto_gcp"],
         credentials=credenciais,
         progress_bar_type=None,
@@ -130,7 +138,8 @@ def main() -> int:
     cfg = carregar_config()
 
     print(f"Ingestao batch iniciada em {datetime.now(timezone.utc).isoformat()}")
-    print(f"Fonte:   {FONTE}")
+    fontes = sorted({t.rsplit(".", 1)[0] for t in TABELAS_BATCH.values()})
+    print("Fontes:  " + ", ".join(fontes))
     print(f"Destino: gs://{cfg['bucket_lake']}/bronze/")
     print()
 
@@ -142,12 +151,12 @@ def main() -> int:
     total = len(TABELAS_BATCH)
 
     resultados = []
-    for i, tabela in enumerate(TABELAS_BATCH, start=1):
+    for i, (tabela, fonte_tabela) in enumerate(TABELAS_BATCH.items(), start=1):
         # Progresso em tempo real: qual tabela, posicao na fila e duracao.
         # flush=True garante que a mensagem aparece antes da carga comecar.
         print(f"[{i}/{total}] Ingerindo {tabela}...", flush=True)
         t0 = time.time()
-        r = ingerir_tabela(tabela, cfg, credenciais)
+        r = ingerir_tabela(tabela, fonte_tabela, cfg, credenciais)
         r["duracao_s"] = time.time() - t0
         resultados.append(r)
         print(
