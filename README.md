@@ -241,6 +241,13 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
 
 > 📌 **Nota para Windows:** se o comando `python` não for reconhecido no seu terminal (o instalador nem sempre o adiciona ao PATH do PowerShell), substitua-o pelo launcher `py`, que é instalado por padrão: `py src/ingestion/prod_01_ingestao_batch.py`. Os comandos abaixo usam a forma canônica `python`.
 
+**Duas formas de percorrer a pipeline.** Depois da configuração (passos 1 a 3), o executor escolhe a trilha:
+
+- **Pelos notebooks de desenvolvimento** (`notebooks/desenv_01` a `desenv_04`): execução célula a célula, com a documentação de cada passo, os conceitos das aulas e as conferências intermediárias visíveis. É o caminho recomendado para quem quer entender a estrutura e a lógica de cada camada, com a vantagem de depurar no detalhe: qualquer célula pode ser reexecutada e seu resultado inspecionado isoladamente antes de seguir;
+- **Pelos scripts de produção** (`src/`, prefixo `prod_`): a mesma lógica já validada, empacotada em funções, com relatório de execução e código de saída para orquestração. É a via direta, usada nos passos 4 a 8 abaixo; se o terminal acusar comando não reconhecido, vale a nota acima sobre o launcher `py`.
+
+As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os pares está na seção 12); os notebooks guardam, além do código, as evidências de execução que fundamentaram cada decisão.
+
 1. **Crie um projeto no Google Cloud** (gratuito, sem cartão): <https://console.cloud.google.com/projectcreate>. Anote o ID do projeto;
 2. **Instale as dependências:**
    ```
