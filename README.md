@@ -20,7 +20,8 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 10. [Aplicação em Inteligência Artificial](#10-aplicação-em-inteligência-artificial)
 11. [Como executar](#11-como-executar)
 12. [Estrutura do repositório](#12-estrutura-do-repositório)
-13. [Referências](#13-referências)
+13. [Uso de IA no desenvolvimento](#13-uso-de-ia-no-desenvolvimento)
+14. [Referências](#14-referências)
 
 ---
 
@@ -447,7 +448,25 @@ A ordem dos passos 4 a 8 é o encadeamento da pipeline: cada script termina com 
 | `desenv_03_bronze_to_silver.ipynb` | `transform/prod_03_bronze_to_silver.py` |
 | `desenv_04_silver_to_gold.ipynb` | `transform/prod_04_silver_to_gold.py` |
 
-## 13. Referências
+## 13. Uso de IA no desenvolvimento
+
+Este projeto foi desenvolvido com apoio de uma ferramenta de IA generativa (Claude, da Anthropic) atuando como par de programação e tutoria, em sessões de cocriação documentadas nas Pull Requests do repositório. Todas as decisões de arquitetura, execuções na nuvem, validações e merges são do autor; a divisão de papéis por atividade está descrita abaixo.
+
+| Atividade | Papel do autor | Papel da IA |
+|---|---|---|
+| Decisões de arquitetura (D-001 a D-014) | Todas as escolhas finais, incluindo os insights de origem (streaming no nível do aluno, safra vigente estrita, dupla métrica de ausentes) | Mapeamento de alternativas com prós e contras; registro no diário de decisões |
+| Fundamentação nas aulas do módulo | Definição da convenção didática do projeto: cada seção dos notebooks `desenv_` associa o passo executado aos conceitos e às aulas do módulo, com referência explícita, como instrumento do próprio aprendizado | Redação dos blocos de conceito conforme a convenção, com as referências indicadas |
+| Desenvolvimento de código (notebooks `desenv_`) | Direcionamento de cada célula (objetivo, insumos e resultado esperado); execução, conferência dos números contra o esperado e pedidos de correção; ajustes pontuais no código | Escrita da implementação em pareamento, sob o direcionamento e a validação do autor |
+| Verificações empíricas | Questionamento das premissas e execução dos testes que derrubaram ou confirmaram hipóteses | Scripts de verificação e sistematização dos achados |
+| Promoção para produção (scripts `prod_`) | Critérios de promoção e validação por execução real no terminal; feedback de usabilidade (relatórios de progresso, launcher `py`) | Empacotamento do código validado em funções, tratamento de erros e verificações estruturais |
+| Qualidade de dados | Definição das regras de negócio (tratamento de ausentes, dupla métrica, quarentena) | Implementação das regras e validação das premissas nos dados |
+| Documentação (README e docs) | Tom, estrutura, edições diretas e revisão final de cada seção | Redação de rascunhos e consolidação |
+| Git e Pull Requests | Revisão e merge de todas as PRs pela interface; comentários e ajustes de revisão; edições diretas na `main` | Automação de commits, branches e descrições de PR via CLI (`git`/`gh`), origem do carimbo de coautoria nos metadados dos commits |
+| Infraestrutura GCP | Criação do projeto, autorizações e todas as execuções na própria conta e billing | Orientação passo a passo e diagnóstico de erros |
+
+As Pull Requests registram esse fluxo etapa a etapa e constituem a evidência do processo de cocriação.
+
+## 14. Referências
 
 - INEP. [Avaliação da Alfabetização](https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/avaliacao-da-alfabetizacao). Acesso em jul. 2026.
 - INEP. [Brasil e 20 unidades da Federação alcançam meta de alfabetização](https://www.gov.br/inep/pt-br/centrais-de-conteudo/noticias/avaliacao-da-alfabetizacao/brasil-e-20-unidades-da-federacao-alcancam-meta-de-alfabetizacao). Mar. 2026.
