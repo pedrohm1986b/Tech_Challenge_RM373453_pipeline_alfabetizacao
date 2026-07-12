@@ -225,7 +225,7 @@ O critério de classificação foi a dinâmica natural de produção de cada dad
 
 ### 6.3 Kafka × Pub/Sub
 
-O módulo ensinou streaming com Apache Kafka; a pipeline usa Google Pub/Sub (decisão D-009). Os conceitos transferem-se um a um: producer e publisher, consumer group e subscription, offset e ack, partição com chave e ordering key, retenção e backlog. A escolha ficou com o serviço gerenciado da mesma nuvem: mesma credencial, mesmo console, dead letter topic nativo e free tier folgado, mantendo a arquitetura inteira em um único provedor (coerência com a D-001). **Contraponto:** o Kafka local seria fiel à ferramenta das aulas e exporia a mecânica de partições e offsets com mais detalhe, ao custo de um broker fora da nuvem do projeto, com instalação e administração próprias; o professor confirmou a flexibilidade de tecnologia para ingestões equivalentes.
+O módulo ensinou streaming com Apache Kafka; a pipeline usa Google Pub/Sub (decisão D-009). Os conceitos transferem-se um a um: producer e publisher, consumer group e subscription, offset e ack, partição com chave e ordering key, retenção e backlog. A escolha ficou com o serviço gerenciado da mesma nuvem: mesma credencial, mesmo console, dead letter topic nativo e free tier folgado, mantendo a arquitetura inteira em um único provedor (coerência com a D-001). **Contraponto:** o Kafka local seria fiel à ferramenta das aulas e exporia a mecânica de partições e offsets com mais detalhe, ao custo de um broker fora da nuvem do projeto, com instalação e administração próprias. a professor confirmou a flexibilidade de tecnologia para ingestões equivalentes no grupod do Discord da Pós Tech.
 
 ### 6.4 pandas × Spark (custo × performance)
 
