@@ -15,7 +15,7 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 5. [Tecnologias utilizadas](#5-tecnologias-utilizadas)
 6. [Decisões arquiteturais e trade-offs](#6-decisões-arquiteturais-e-trade-offs)
 7. [Qualidade de dados](#7-qualidade-de-dados)
-8. [Monitoramento](#8-monitoramento) 🚧
+8. [Monitoramento e orquestração](#8-monitoramento-e-orquestração)
 9. [FinOps e custos](#9-finops-e-custos) 🚧
 10. [Aplicação em Inteligência Artificial](#10-aplicação-em-inteligência-artificial)
 11. [Como executar](#11-como-executar)
@@ -47,7 +47,7 @@ A ingestão dos dados combina dois modos complementares. No modo batch, cargas p
 
 A organização dos dados segue a Arquitetura Medalhão, em três camadas com níveis crescentes de refinamento. Na camada Bronze, os dados são preservados exatamente como chegam das fontes, garantindo histórico, auditoria e capacidade de reprocessamento. Na camada Silver, os dados são limpos, padronizados e validados, e as diferentes bases são integradas por meio de chaves comuns, como o código IBGE do município, a UF e o ano. Na camada Gold, os dados são modelados para consumo analítico, com visões como o indicador por município, a comparação entre metas e resultados e a evolução temporal da alfabetização.
 
-Três disciplinas transversais sustentam a pipeline. Regras de qualidade de dados verificam duplicidades, valores ausentes, integridade das chaves de relacionamento e consistência entre tabelas, isolando registros inválidos em área de quarentena para auditoria. Mecanismos de monitoramento acompanham falhas de ingestão, latência e volume processado em cada camada. Práticas de FinOps orientam as escolhas de armazenamento, processamento e consulta, buscando o menor custo operacional possível em nuvem sem comprometer a escalabilidade.
+Três disciplinas transversais sustentam a pipeline. Regras de qualidade de dados verificam duplicidades, valores ausentes, integridade das chaves de relacionamento e consistência entre tabelas, isolando registros inválidos em área de quarentena para auditoria. A observabilidade é embutida nos próprios scripts: relatórios de execução com volumetria e duração, reconciliação de contagens e códigos de saída que sinalizam falha para a orquestração (ver seção 8). Práticas de FinOps orientam as escolhas de armazenamento, processamento e consulta, buscando o menor custo operacional possível em nuvem sem comprometer a escalabilidade.
 
 Ao final, a camada analítica permite responder perguntas relevantes para a gestão educacional, como quais municípios estão mais distantes das metas pactuadas, onde o indicador evolui mais lentamente e como os resultados se distribuem entre redes de ensino e territórios. A mesma base fica preparada para usos futuros em inteligência artificial, como modelos de predição de risco de não alfabetização por município e a identificação de perfis de vulnerabilidade educacional, apoiando políticas públicas baseadas em evidências.
 
@@ -182,7 +182,7 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 | Data lake (camadas do medalhão) | Google Cloud Storage | definido (D-006) |
 | Mensageria do streaming (tópico e DLQ) | Google Pub/Sub | definido (D-009) |
 | Motor de processamento da Silver | pandas, lendo e gravando Parquet no lake | definido (D-012) |
-| Orquestração | 🚧 pendente | decisão prevista |
+| Orquestração | não adotada nesta fase; execução sequencial documentada | decidido (D-014, ver seção 8) |
 
 As justificativas de cada escolha estão no [diário de decisões](docs/decisoes.md). O contrato dos eventos de streaming está em [config/schemas/evento_resultado_aluno.md](config/schemas/evento_resultado_aluno.md).
 
@@ -248,9 +248,22 @@ Princípios adotados (decisões D-011 e D-013):
 - **Toda regra nasce de verificação empírica.** As premissas foram validadas nos dados antes de virarem código (notebook `desenv_03`, Seções 4 e 7), e as verificações estruturais (joins sem alteração de contagem, conservação de linhas, reconciliação de gravação) derrubam a execução de produção com código de saída 1;
 - **Integridade referencial conferida a cada join:** contagem de linhas inalterada (join muitos-para-um não cria nem elimina linhas) e correspondência completa das chaves (zero municípios sem par no diretório).
 
-## 8. Monitoramento
+## 8. Monitoramento e orquestração
 
-🚧 Em construção (Etapa 7).
+**Decisão de escopo (D-014):** o monitoramento formal e a ferramenta de orquestração não foram implementados nesta fase. O monitoramento é item opcional no enunciado, e o autor optou por não o desenvolver por questão de escopo e simplificação na resolução do Tech Challenge; a orquestração acompanhou a decisão, porque o encadeamento da pipeline (passos 4 a 8 do Como Executar) tem quatro nós em sequência e execução manual documentada. As alternativas avaliadas e o racional completo estão no [diário de decisões](docs/decisoes.md).
+
+A decisão foi possível porque a observabilidade básica está **embutida nos próprios scripts**, construída ao longo das etapas:
+
+| Mecanismo | Onde | O que revela |
+|---|---|---|
+| Relatório de execução (`RESUMO DA EXECUCAO`) | todos os `prod_` | linhas processadas, volume, duração por etapa, partição da carga e status final |
+| Reconciliação de contagens | ingestão e gravações (`prod_01`, `prod_03`, `prod_04`) | divergência entre o que saiu da fonte/memória e o que está no lake |
+| Códigos de saída 0/1 | todos os `prod_` | contrato de falha pronto para qualquer orquestrador consumir |
+| DLQ com motivo | consumer do streaming (`prod_02`) | eventos malformados, sem interrupção do fluxo |
+| Deduplicação persistida | `controle/` no bucket | reprocessamentos e duplicatas entre execuções |
+| Quarentena com motivo | `quarentena/` no lake | registros reprovados nas regras de qualidade, auditáveis |
+
+**Caminho de evolução declarado:** com mais fontes ou janelas de dependência complexas, o encadeamento migra para um orquestrador (Cloud Composer/Airflow, o mapeamento da GCP visto em aula), consumindo os códigos de saída já existentes; o monitoramento formal adicionaria alertas, acompanhamento de backlog e lag do Pub/Sub e painéis de volumetria por camada. Nenhum script precisaria mudar.
 
 ## 9. FinOps e custos
 
@@ -329,7 +342,7 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    ```
    O script calcula as três medidas da D-011 (taxa oficial, taxa ajustada e participação), monta a série histórica municipal unindo o histórico oficial com a estimativa do fluxo (coluna `origem` em cada linha), integra a meta da safra vigente, grava `gold/indicador_municipio` e publica a tabela no BigQuery como tabela externa. Verificação manual: no console do BigQuery, o dataset `gold` aparece no seu projeto com a tabela `indicador_municipio`, consultável em SQL; no bucket, a área `gold/` completa o medalhão.
 
-As instruções da orquestração serão adicionadas quando a etapa for concluída.
+A ordem dos passos 4 a 8 é o encadeamento da pipeline: cada script termina com código de saída 0 (sucesso) ou 1 (falha), e a execução deve parar na primeira falha (decisão D-014, seção 8).
 
 ## 12. Estrutura do repositório
 
@@ -380,7 +393,7 @@ As instruções da orquestração serão adicionadas quando a etapa for concluí
 | 4 | Ingestão streaming simulada (camada Bronze) | ✅ concluída |
 | 5 | Camada Silver e qualidade de dados | ✅ concluída |
 | 6 | Camada Gold (datasets analíticos) | ✅ concluída |
-| 7 | Orquestração e monitoramento | ⬜ |
+| 7 | Orquestração e monitoramento | ✖ não implementada por decisão de escopo (item opcional; D-014) |
 | 8 | FinOps e estimativa de custos | ⬜ |
 | 9 | Documentação final | ⬜ |
 | 10 | Vídeo executivo | ⬜ |
