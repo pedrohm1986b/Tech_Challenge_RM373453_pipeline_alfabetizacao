@@ -12,13 +12,13 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 2. [Objetivo do projeto](#2-objetivo-do-projeto)
 3. [Fonte de dados](#3-fonte-de-dados)
 4. [Arquitetura da solução](#4-arquitetura-da-solução)
-5. [Tecnologias utilizadas](#5-tecnologias-utilizadas) 🚧
-6. [Decisões arquiteturais e trade-offs](#6-decisões-arquiteturais-e-trade-offs) 🚧
-7. [Qualidade de dados](#7-qualidade-de-dados) 🚧
+5. [Tecnologias utilizadas](#5-tecnologias-utilizadas)
+6. [Decisões arquiteturais e trade-offs](#6-decisões-arquiteturais-e-trade-offs)
+7. [Qualidade de dados](#7-qualidade-de-dados)
 8. [Monitoramento](#8-monitoramento) 🚧
 9. [FinOps e custos](#9-finops-e-custos) 🚧
-10. [Aplicação em Inteligência Artificial](#10-aplicação-em-inteligência-artificial) 🚧
-11. [Como executar](#11-como-executar) 🚧
+10. [Aplicação em Inteligência Artificial](#10-aplicação-em-inteligência-artificial)
+11. [Como executar](#11-como-executar)
 12. [Estrutura do repositório](#12-estrutura-do-repositório)
 13. [Status e roadmap](#13-status-e-roadmap)
 14. [Referências](#14-referências)
@@ -188,8 +188,6 @@ As justificativas de cada escolha estão no [diário de decisões](docs/decisoes
 
 ## 5. Tecnologias utilizadas
 
-🚧 Em definição. Escolhas já realizadas:
-
 | Tecnologia | Papel | Justificativa |
 |---|---|---|
 | Google Cloud Platform (GCP) | Nuvem do projeto | A fonte de dados é distribuída via BigQuery público da Base dos Dados, o que elimina movimentação inicial de dados; o free tier cobre o volume do projeto |
@@ -204,7 +202,34 @@ A escolha restante (orquestração) será definida e justificada na etapa corres
 
 ## 6. Decisões arquiteturais e trade-offs
 
-🚧 Em construção. Documentará as decisões de batch vs streaming, data lake vs data warehouse e custo vs performance.
+Todas as decisões do projeto estão registradas com data, contexto, justificativa e alternativas no [diário de decisões](docs/decisoes.md) (D-001 a D-013). Esta seção consolida os quatro trade-offs estruturais, aqueles em que a alternativa descartada era legítima e a escolha define a arquitetura.
+
+### 6.1 Data lake × data warehouse
+
+| Arquitetura escolhida | Alternativa considerada |
+|---|---|
+| Python extrai do BigQuery para Parquet no lake (GCS); as camadas do medalhão são arquivos; a Gold é publicada de volta ao BigQuery para consulta | Tudo dentro do BigQuery: queries salvas e agendadas transformando as tabelas da fonte em datasets próprios (ELT dentro do warehouse) |
+
+Quatro fundamentos sustentam a escolha:
+
+1. **Pipeline como código:** queries salvas no console vivem fora do repositório, sem commit, sem PR, sem diff e sem histórico de quem mudou o quê. Código Python, com o SQL embutido, é integralmente versionado, e cada mudança na pipeline passa por revisão;
+2. **Reprodutibilidade:** quem clona o repositório reconstrói a pipeline do zero no próprio projeto GCP. Queries salvas no console de um projeto pessoal não são inspecionáveis nem reproduzíveis pelo avaliador;
+3. **Bronze física, não virtual:** uma view reflete o estado atual da fonte; se a origem corrigir um número, a "bronze virtual" muda junto e a auditoria se perde. O Parquet no lake congela o dado como ele chegou, com o timestamp de ingestão;
+4. **Streaming exige código:** producer, consumer, DLQ e deduplicação não se fazem com query. Como o código é obrigatório para metade da ingestão, concentrar a pipeline nele mantém um paradigma único.
+
+**Contraponto honesto:** o dbt resolve o versionamento para o mundo "tudo no warehouse" (SQL em Git, com testes e PRs), e uma operação puramente batch poderia legitimamente escolher BigQuery com dbt. Não foi a escolha aqui porque o case exige medalhão em lake e ingestão streaming, e porque a Bronze física se perderia. O warehouse é usado onde ele brilha: servir a análise (tabela externa sobre a Gold, decisão D-012), não hospedar a pipeline inteira.
+
+### 6.2 Batch × streaming
+
+O critério de classificação foi a dinâmica natural de produção de cada dado (decisão D-005, detalhada na seção 4.1): cadastros e metas nascem consolidados e mudam raramente (batch); resultados de avaliação nascem continuamente durante o ciclo de aplicação (streaming, simulado no nível do aluno). O trade-off real estava em *quanto* colocar no fluxo: simular também os consolidados como eventos exercitaria mais a mensageria, mas descolaria da realidade (indicadores consolidados são publicados em lote) e reduziria a pipeline a substituir valores em vez de calcular agregação em fluxo. A regra de convivência entre os modos foi verificada empiricamente antes de virar arquitetura: o consolidado oficial é sempre a fonte de verdade (95,8% das taxas municipais são reproduzíveis dos microdados, mas 643 municípios de 2023 não têm microdados públicos), e a agregação do fluxo vale apenas onde ainda não existe publicação, identificada pela coluna de origem.
+
+### 6.3 Kafka × Pub/Sub
+
+O módulo ensinou streaming com Apache Kafka; a pipeline usa Google Pub/Sub (decisão D-009). Os conceitos transferem-se um a um: producer e publisher, consumer group e subscription, offset e ack, partição com chave e ordering key, retenção e backlog. A escolha ficou com o serviço gerenciado da mesma nuvem: mesma credencial, mesmo console, dead letter topic nativo e free tier folgado, mantendo a arquitetura inteira em um único provedor (coerência com a D-001). **Contraponto:** o Kafka local seria fiel à ferramenta das aulas e exporia a mecânica de partições e offsets com mais detalhe, ao custo de um broker fora da nuvem do projeto, com instalação e administração próprias; o professor confirmou a flexibilidade de tecnologia para ingestões equivalentes.
+
+### 6.4 pandas × Spark (custo × performance)
+
+O volume do projeto (cerca de 70 MB de Bronze, 3,9 milhões de linhas na maior tabela) está ordens de grandeza abaixo do que justifica processamento distribuído: dimensionar a ferramenta ao problema é a prática de FinOps que a própria disciplina recomenda contra o excesso de engenharia (decisão D-012). O pandas lê e grava `gs://` nativamente, já estava validado nas ingestões e preserva o medalhão como três áreas do mesmo bucket. O formato Parquet entrega a eficiência de armazenamento medida no projeto (tabela de alunos 3,0 vezes menor que o equivalente CSV). **Caminho de escala declarado:** se o volume crescer em ordem de grandeza (novas edições anuais mudam pouco; a inclusão de outras avaliações mudaria o cenário), as funções de transformação migram para Spark em Dataproc sem alteração do desenho das camadas, porque a fronteira entre elas é o formato dos arquivos, não o motor.
 
 ## 7. Qualidade de dados
 
@@ -233,7 +258,13 @@ Princípios adotados (decisões D-011 e D-013):
 
 ## 10. Aplicação em Inteligência Artificial
 
-🚧 Em construção (Etapa 9).
+A camada Gold foi desenhada para alimentar modelos, não apenas dashboards: a tabela `gold.indicador_municipio` reúne, por município e ano, a taxa nas três medidas da D-011, a participação, a meta vigente e a distância até ela, com a origem de cada ponto declarada. Três aplicações diretas:
+
+- **Predição de risco de não atingimento:** com a série histórica municipal, um modelo supervisionado pode estimar a probabilidade de cada município não atingir a meta do ciclo seguinte, antecipando a priorização de apoio. As variáveis candidatas já estão na Gold: trajetória da taxa, participação, porte da rede (alunos presentes), UF e região;
+- **Priorização com incerteza declarada:** a distância entre `taxa` e `taxa_ajustada` cresce onde a participação é baixa e funciona como medida de incerteza da própria medição. Ela separa dois problemas de natureza distinta: município distante da meta com participação alta (problema de aprendizagem) e com participação baixa (problema de medição antes de tudo). O ranking de 2024 já revelou um padrão concreto para investigação: municípios pequenos do Rio Grande do Sul, com meta pactuada de 80% e participação alta, dezenas de pontos abaixo do pactuado;
+- **Alerta precoce em fluxo:** a estimativa do ciclo corrente, recalculada a cada consumo do streaming, permite acompanhar o indicador durante o ano de aplicação, em vez de esperar a publicação oficial, sempre identificada como estimativa (D-005) e acompanhada do volume amostral que a sustenta.
+
+Nenhuma dessas aplicações exige mudança na pipeline: todas consomem a Gold pelo BigQuery, como qualquer ferramenta de análise.
 
 ## 11. Como executar
 

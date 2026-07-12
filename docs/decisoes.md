@@ -28,6 +28,8 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 **Justificativa:** a extração programática torna a pipeline reprodutível de ponta a ponta (qualquer pessoa executa o código e obtém os mesmos dados), elimina passos manuais fora do versionamento e reflete a prática profissional de ingestão. O download manual permanece como recurso de conferência pontual.
 
+**Extensão (12/07/2026):** o desdobramento completo desta decisão, incluindo a alternativa de operar a pipeline inteira dentro do BigQuery com queries salvas (ELT no warehouse) e o contraponto do dbt, está consolidado como o trade-off data lake × data warehouse na seção 6.1 do README.
+
 ---
 
 ## D-003 · Repositório público com README evolutivo
