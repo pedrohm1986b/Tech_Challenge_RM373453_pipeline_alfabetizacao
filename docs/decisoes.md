@@ -182,6 +182,20 @@ Registro das decisões relevantes do projeto, com contexto e justificativa. Cada
 
 ---
 
+## D-014 · Monitoramento e orquestração: não implementados nesta fase, com observabilidade embutida
+
+**Data:** 12/07/2026 · **Etapa:** Fechamento do escopo
+
+**Decisão:** o monitoramento formal e a ferramenta de orquestração não são implementados nesta fase do projeto. O autor optou por não desenvolver o item por ser opcional no enunciado, por questão de escopo e simplificação na resolução do Tech Challenge. A seção 8 do README documenta a decisão e a observabilidade embutida que a sustenta.
+
+**Contexto:** o enunciado lista o monitoramento entre os opcionais valorizados, não entre os requisitos obrigatórios; a orquestração não consta dos requisitos. O encadeamento da pipeline tem quatro nós em sequência simples (ingestão batch, ingestão streaming, Bronze para Silver, Silver para Gold), com a ordem documentada no Como Executar. Havia ainda um impeditivo técnico para orquestração em nuvem: os scripts autenticam com credencial de usuário pelo navegador, e um orquestrador gerenciado exigiria migração para service account e containerização.
+
+**Justificativa:** o Cloud Composer (mapeamento GCP do Airflow visto em aula) custa centenas de dólares mensais sem free tier, desproporcional a um DAG de quatro nós lineares (mesmo princípio anti-sobre-engenharia da D-012); o Airflow local exigiria infraestrutura Docker que o avaliador teria de reproduzir. A observabilidade básica já está embutida nos scripts, construída ao longo das etapas: relatórios de execução com volumetria e duração, reconciliação de contagens, códigos de saída 0/1 (o contrato que qualquer orquestrador futuro consome), DLQ com motivo, deduplicação persistida e quarentena auditável.
+
+**Alternativas consideradas:** Cloud Composer (custo desproporcional e reengenharia de autenticação); Airflow local em Docker (atrito de infraestrutura para autor e avaliador); orquestrador próprio em Python encadeando os scripts pelos códigos de saída (viável e barato, mas descartado com o conjunto, pela simplificação de escopo). O caminho de evolução fica declarado na seção 8 do README: os scripts não precisariam mudar.
+
+---
+
 ## Decisões pendentes
 
 Os identificadores são atribuídos apenas quando a decisão é tomada, para evitar renumerações.
@@ -189,7 +203,6 @@ Os identificadores são atribuídos apenas quando a decisão é tomada, para evi
 | Tema | Sessão prevista |
 |---|---|
 | Diagrama do fluxo do dado (payload a cada passo) | 4 |
-| Ferramenta de orquestração | 7.1 |
 
 ---
 
