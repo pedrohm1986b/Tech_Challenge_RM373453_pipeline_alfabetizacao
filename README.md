@@ -193,7 +193,7 @@ As justificativas de cada escolha estão no [diário de decisões](docs/decisoes
 | Tecnologia | Papel | Justificativa |
 |---|---|---|
 | Google Cloud Platform (GCP) | Nuvem do projeto | A fonte de dados é distribuída via BigQuery público da Base dos Dados, o que elimina movimentação inicial de dados; o free tier cobre o volume do projeto |
-| BigQuery | Fonte de extração e camada de consulta | Acesso SQL direto às tabelas públicas; consultas dentro do free tier de 1 TB/mês |
+| BigQuery | Fonte de extração e camada de consumo | Acesso SQL direto às tabelas públicas na extração; no consumo, tabela externa sobre a Gold (o dado permanece no lake, sem duplicação); consultas dentro do free tier de 1 TB/mês |
 | Python | Linguagem da pipeline | Ecossistema consolidado de engenharia de dados; bibliotecas `pandas-gbq` e `google-cloud-bigquery` |
 | Google Cloud Storage | Data lake (Bronze, Silver, Gold e quarentena) | Object storage durável e de baixo custo; free tier de 5 GB/mês cobre o volume do projeto; mesma região da fonte evita custo de transferência |
 | Parquet | Formato de armazenamento das camadas | Colunar e comprimido; na tabela de alunos ficou 3,0 vezes menor que o equivalente em CSV (medição do projeto) |
@@ -267,7 +267,13 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
    ```
    O script decodifica os dados com o dicionário da fonte, converte as metas para o formato long, aplica a flag de presença aos alunos, integra os resultados municipais com o diretório IBGE e a meta da safra vigente, agrega os eventos do fluxo na estimativa preliminar de 2025, executa as regras de qualidade (reprovados vão para `quarentena/`) e grava as tabelas em `silver/`, reconciliando cada gravação. A verificação manual é a mesma do passo 5: as áreas `silver/` e `quarentena/` devem aparecer no bucket ao lado de `bronze/`.
 
-As instruções das demais etapas (Gold, orquestração) serão adicionadas conforme forem concluídas.
+8. **Execute a transformação Silver → Gold:**
+   ```
+   python src/transform/prod_04_silver_to_gold.py
+   ```
+   O script calcula as três medidas da D-011 (taxa oficial, taxa ajustada e participação), monta a série histórica municipal unindo o histórico oficial com a estimativa do fluxo (coluna `origem` em cada linha), integra a meta da safra vigente, grava `gold/indicador_municipio` e publica a tabela no BigQuery como tabela externa. Verificação manual: no console do BigQuery, o dataset `gold` aparece no seu projeto com a tabela `indicador_municipio`, consultável em SQL; no bucket, a área `gold/` completa o medalhão.
+
+As instruções da orquestração serão adicionadas quando a etapa for concluída.
 
 ## 12. Estrutura do repositório
 
@@ -277,12 +283,14 @@ As instruções das demais etapas (Gold, orquestração) serão adicionadas conf
 │   │   ├── prod_01_ingestao_batch.py         # ingestão batch → Bronze
 │   │   └── prod_02_ingestao_streaming.py     # producer e consumer do streaming
 │   └── transform/
-│       └── prod_03_bronze_to_silver.py       # Bronze → Silver, com qualidade e quarentena
+│       ├── prod_03_bronze_to_silver.py       # Bronze → Silver, com qualidade e quarentena
+│       └── prod_04_silver_to_gold.py         # Silver → Gold, com publicação no BigQuery
 ├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
 │   ├── desenv_00_levantamento_fontes_dados.py
 │   ├── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
 │   ├── desenv_02_ingestao_streaming.ipynb    # desenvolvimento da ingestão streaming
-│   └── desenv_03_bronze_to_silver.ipynb      # desenvolvimento da camada Silver
+│   ├── desenv_03_bronze_to_silver.ipynb      # desenvolvimento da camada Silver
+│   └── desenv_04_silver_to_gold.ipynb        # desenvolvimento da camada Gold
 ├── docs/
 │   ├── dicionario_dados.md
 │   ├── sobre_o_indicador.md
@@ -303,7 +311,7 @@ As instruções das demais etapas (Gold, orquestração) serão adicionadas conf
 | `desenv_01_ingestao_batch.ipynb` | `ingestion/prod_01_ingestao_batch.py` | 3 |
 | `desenv_02_ingestao_streaming.ipynb` | `ingestion/prod_02_ingestao_streaming.py` | 4 |
 | `desenv_03_bronze_to_silver.ipynb` | `transform/prod_03_bronze_to_silver.py` | 5 |
-| `desenv_04_silver_to_gold.ipynb` (previsto) | `transform/prod_04_silver_to_gold.py` | 6 |
+| `desenv_04_silver_to_gold.ipynb` | `transform/prod_04_silver_to_gold.py` | 6 |
 
 ## 13. Status e roadmap
 
@@ -315,7 +323,7 @@ As instruções das demais etapas (Gold, orquestração) serão adicionadas conf
 | 3 | Ingestão batch (camada Bronze) | ✅ concluída |
 | 4 | Ingestão streaming simulada (camada Bronze) | ✅ concluída |
 | 5 | Camada Silver e qualidade de dados | ✅ concluída |
-| 6 | Camada Gold (datasets analíticos) | ⬜ |
+| 6 | Camada Gold (datasets analíticos) | ✅ concluída |
 | 7 | Orquestração e monitoramento | ⬜ |
 | 8 | FinOps e estimativa de custos | ⬜ |
 | 9 | Documentação final | ⬜ |
