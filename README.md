@@ -239,6 +239,8 @@ Princípios adotados (decisões D-011 e D-013):
 
 Pré-requisitos: Python 3.11 ou superior e uma conta Google.
 
+> 📌 **Nota para Windows:** se o comando `python` não for reconhecido no seu terminal (o instalador nem sempre o adiciona ao PATH do PowerShell), substitua-o pelo launcher `py`, que é instalado por padrão: `py src/ingestion/prod_01_ingestao_batch.py`. Os comandos abaixo usam a forma canônica `python`.
+
 1. **Crie um projeto no Google Cloud** (gratuito, sem cartão): <https://console.cloud.google.com/projectcreate>. Anote o ID do projeto;
 2. **Instale as dependências:**
    ```

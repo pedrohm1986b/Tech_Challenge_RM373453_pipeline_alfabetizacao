@@ -22,6 +22,8 @@ O que este script faz:
 
 Execução:
     python src/transform/prod_03_bronze_to_silver.py
+    (no Windows, se o comando python não for reconhecido, use o launcher py:
+    py src/transform/prod_03_bronze_to_silver.py)
 
 Propriedades:
 - Idempotência por sobrescrita de partição: reexecutar no mesmo dia substitui

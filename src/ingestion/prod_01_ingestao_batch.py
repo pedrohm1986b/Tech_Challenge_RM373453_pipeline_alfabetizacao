@@ -20,6 +20,8 @@ O que este script faz:
 
 Execução:
     python src/ingestion/prod_01_ingestao_batch.py
+    (no Windows, se o comando python não for reconhecido, use o launcher py:
+    py src/ingestion/prod_01_ingestao_batch.py)
 
 Propriedades:
 - Idempotência por sobrescrita de partição: reexecutar no mesmo dia substitui
