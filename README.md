@@ -16,14 +16,12 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 6. [Decisões arquiteturais e trade-offs](#6-decisões-arquiteturais-e-trade-offs)
 7. [Qualidade de dados](#7-qualidade-de-dados)
 8. [Monitoramento e orquestração](#8-monitoramento-e-orquestração)
-9. [FinOps e custos](#9-finops-e-custos) 🚧
+9. [FinOps e custos](#9-finops-e-custos)
 10. [Aplicação em Inteligência Artificial](#10-aplicação-em-inteligência-artificial)
 11. [Como executar](#11-como-executar)
 12. [Estrutura do repositório](#12-estrutura-do-repositório)
 13. [Status e roadmap](#13-status-e-roadmap)
 14. [Referências](#14-referências)
-
-🚧 = seção em construção, preenchida conforme a evolução do projeto (ver [Status e roadmap](#13-status-e-roadmap)).
 
 ---
 
@@ -267,7 +265,75 @@ A decisão foi possível porque a observabilidade básica está **embutida nos p
 
 ## 9. FinOps e custos
 
-🚧 Em construção (Etapa 8). Incluirá estimativa de custo da arquitetura em dois cenários de volume.
+### 9.1 Práticas aplicadas
+
+Cada prática abaixo está implementada e tem evidência medida no projeto:
+
+- **Formato colunar comprimido:** todas as camadas em Parquet; na tabela de alunos, 3,0 vezes menor que o equivalente CSV (medição do projeto, `desenv_01`);
+- **Leitura colunar e seletiva:** as transformações leem apenas as colunas necessárias (`columns=` no pandas), e contagens de conferência trafegam uma única coluna;
+- **Particionamento por data com leitura da partição mais recente:** consultas e transformações nunca varrem o histórico de cargas;
+- **Separação entre computação e armazenamento, com computação zero em repouso:** não há cluster, VM, broker nem orquestrador ligados; entre execuções, o único custo da arquitetura é o armazenamento no bucket (decisões D-012 e D-014);
+- **Consumo sem duplicação:** o BigQuery consulta a Gold por tabela externa; o dado existe uma única vez, no lake;
+- **Mesma região para fonte, lake e consumo** (`us-central1`): sem custo de transferência entre serviços;
+- **Controle de recursos por executor:** cada pessoa roda no próprio projeto GCP e bucket (`config.json`), com o quota project declarado; o billing é individual e não há recurso compartilhado.
+
+### 9.2 Volume real medido
+
+Medição direta do bucket após a carga completa das três camadas (jul/2026):
+
+| Área | Volume | Observação |
+|---|---:|---|
+| `bronze/` | 205,7 MB | acumula o histórico de partições (3 cargas de ~68 MB) |
+| `silver/` | 60,9 MB | curadoria com colunas selecionadas |
+| `gold/` | 0,4 MB | o dataset analítico completo |
+| `quarentena/` + `controle/` | < 0,1 MB | auditoria e estado operacional |
+| **Total** | **267 MB** | ~5% do free tier do Cloud Storage |
+
+```mermaid
+pie showData title Composição do lake (MB)
+    "bronze (histórico de cargas)" : 205.7
+    "silver (dados curados)" : 60.9
+    "gold (dataset analítico)" : 0.4
+```
+
+A Bronze domina o volume porque preserva o histórico de cargas por partição de data, que é seu papel. A alavanca de custo declarada para o crescimento é a **política de ciclo de vida** do bucket: regras de lifecycle podem mover partições antigas para classes frias (Nearline/Coldline, frações do preço) ou expirá-las após o período de auditoria, sem tocar no código da pipeline.
+
+### 9.3 Estimativa de custo em dois cenários
+
+Valores de referência da tabela pública da GCP em jul/2026, arredondados; a estimativa fina se faz na [calculadora oficial](https://cloud.google.com/products/calculator).
+
+**Cenário 1, o projeto como está** (carga completa mensal + consultas de análise):
+
+| Serviço | Uso mensal | Free tier | Custo |
+|---|---|---|---:|
+| Cloud Storage | 0,27 GB armazenados | 5 GB | US$ 0 |
+| BigQuery (consultas) | dezenas de GB varridos (extração da fonte + consultas na Gold) | 1 TB | US$ 0 |
+| BigQuery (armazenamento) | zero (tabela externa) | — | US$ 0 |
+| Pub/Sub | < 0,01 GB de tráfego | 10 GB | US$ 0 |
+| **Total** | | | **US$ 0,00** |
+
+A arquitetura opera integralmente dentro dos free tiers, com folga de mais de uma ordem de grandeza em cada serviço.
+
+**Cenário 2, escala de operação nacional contínua** (hipótese: todas as edições históricas mais enriquecimento externo, ~15 GB de lake; streaming com os ~4 milhões de resultados do ciclo fluindo como eventos; consultas analíticas diárias de uma equipe, ~3 TB varridos/mês):
+
+| Serviço | Uso mensal | Custo aproximado |
+|---|---|---:|
+| Cloud Storage | 15 GB | ~US$ 0,30 |
+| BigQuery (consultas) | 3 TB varridos (2 TB além do free tier) | ~US$ 12,50 |
+| Pub/Sub | ~20 GB de tráfego | ~US$ 0,40 |
+| Dataproc (se a transformação migrar para Spark, cluster efêmero ~1 h/dia) | ~30 h | ~US$ 15 |
+| **Total sem orquestrador gerenciado** | | **~US$ 28** |
+| Cloud Composer (se adotado) | ambiente mínimo sempre ligado | **+ ~US$ 400** |
+
+```mermaid
+xychart-beta
+    title "Custo mensal estimado por cenário (US$)"
+    x-axis ["Projeto atual", "Escala nacional", "Escala + Composer"]
+    y-axis "US$ por mês" 0 --> 450
+    bar [0, 28, 428]
+```
+
+A leitura que importa está no salto da terceira barra: mesmo no cenário de escala, **o custo de dados é marginal**; quem domina a conta é o serviço gerenciado sempre ligado (orquestração). É a confirmação numérica das decisões D-012 e D-014: dimensionar a ferramenta ao problema é onde o FinOps se ganha ou se perde nesta arquitetura.
 
 ## 10. Aplicação em Inteligência Artificial
 
@@ -394,7 +460,7 @@ A ordem dos passos 4 a 8 é o encadeamento da pipeline: cada script termina com 
 | 5 | Camada Silver e qualidade de dados | ✅ concluída |
 | 6 | Camada Gold (datasets analíticos) | ✅ concluída |
 | 7 | Orquestração e monitoramento | ✖ não implementada por decisão de escopo (item opcional; D-014) |
-| 8 | FinOps e estimativa de custos | ⬜ |
+| 8 | FinOps e estimativa de custos | ✅ concluída |
 | 9 | Documentação final | ⬜ |
 | 10 | Vídeo executivo | ⬜ |
 
