@@ -65,6 +65,12 @@ Os dados são disponibilizados pela plataforma [Base dos Dados](https://basedosd
 | `br_inep_avaliacao_alfabetizacao__alunos` | Microdados por aluno avaliado | 3.867.999 | 2023–2024 |
 | `dicionario` | Dicionário de códigos das colunas categóricas | 27 | — |
 
+A elas soma-se uma tabela de **dimensão** de outro dataset da mesma plataforma, incorporada quando a integração da camada Silver revelou que as tabelas do INEP carregam apenas códigos de município:
+
+| Tabela | Conteúdo | Linhas | Fonte |
+|---|---|---:|---|
+| `diretorio_municipio` | Nome, UF e região por código IBGE de município | 5.571 | `basedosdados.br_bd_diretorios_brasil.municipio` |
+
 Antes de qualquer decisão de arquitetura, foi realizado um levantamento das fontes por meio do script [notebooks/levantamento_fontes_dados.py](notebooks/levantamento_fontes_dados.py), que investiga schemas, volumes, cobertura temporal, chaves de relacionamento e integridade das tabelas. Não se trata de uma análise exploratória dos dados (EDA), mas de um trabalho de reconhecimento das fontes cujo objetivo é amparar as decisões sobre a arquitetura da solução e as tecnologias utilizadas, registradas em [docs/decisoes.md](docs/decisoes.md). Os resultados completos do levantamento estão documentados em [docs/dicionario_dados.md](docs/dicionario_dados.md).
 
 ## 4. Arquitetura da solução
@@ -90,15 +96,17 @@ O repositório versiona exclusivamente código e documentação. Os dados reside
 
 ```
 gs://<bucket-do-projeto>/
-├── bronze/            # dados brutos, como chegaram das fontes
-│   ├── uf/  municipio/  metas_*/  alunos/     (cargas batch)
-│   └── eventos_medicao/                       (micro-lotes do streaming)
-├── silver/            # dados limpos, padronizados e integrados
-├── gold/              # datasets analíticos prontos para consumo
-└── quarantine/        # registros reprovados nas validações, com o motivo
+├── bronze/                  # dados brutos, como chegaram das fontes
+│   ├── uf/  municipio/  meta_*/  alunos/  dicionario/  diretorio_municipio/   (cargas batch)
+│   └── eventos_resultado_aluno/                                               (micro-lotes do streaming)
+├── silver/                  # dados limpos, padronizados, integrados e validados
+│   └── alunos/  municipio/  estimativa_2025/  metas_brasil/  metas_uf/  metas_municipio/
+├── gold/                    # datasets analíticos prontos para consumo
+├── quarentena/              # registros reprovados nas regras de qualidade, com o motivo
+└── controle/                # estado operacional (deduplicação do streaming)
 ```
 
-Cada módulo de `src/` escreve em uma camada: `src/ingestion` alimenta a Bronze, `src/transform` produz Silver e Gold e `src/quality` alimenta a quarentena e os relatórios de validação. Os arquivos são gravados em formato Parquet, colunar e comprimido, com particionamento por data de ingestão na Bronze e por ano nas demais camadas, o que reduz armazenamento e custo de leitura.
+Cada módulo de `src/` escreve em uma camada: `src/ingestion` alimenta a Bronze e `src/transform` produz Silver e Gold, executando as regras de qualidade na passagem entre camadas e alimentando a quarentena. Os arquivos são gravados em formato Parquet, colunar e comprimido, com particionamento por data de ingestão na Bronze e por data de processamento na Silver, o que reduz armazenamento e custo de leitura e preserva o histórico de cargas.
 
 ### 4.3 Fluxo de dados
 
@@ -173,7 +181,7 @@ O diagrama representa a **visão de componentes** da pipeline: quais peças exis
 | Fonte de extração | BigQuery público (Base dos Dados) | definido (D-002) |
 | Data lake (camadas do medalhão) | Google Cloud Storage | definido (D-006) |
 | Mensageria do streaming (tópico e DLQ) | Google Pub/Sub | definido (D-009) |
-| Motor de processamento da Silver | 🚧 pendente (PySpark ou SQL no BigQuery) | decisão prevista |
+| Motor de processamento da Silver | pandas, lendo e gravando Parquet no lake | definido (D-012) |
 | Orquestração | 🚧 pendente | decisão prevista |
 
 As justificativas de cada escolha estão no [diário de decisões](docs/decisoes.md). O contrato dos eventos de streaming está em [config/schemas/evento_resultado_aluno.md](config/schemas/evento_resultado_aluno.md).
@@ -190,8 +198,9 @@ As justificativas de cada escolha estão no [diário de decisões](docs/decisoes
 | Google Cloud Storage | Data lake (Bronze, Silver, Gold e quarentena) | Object storage durável e de baixo custo; free tier de 5 GB/mês cobre o volume do projeto; mesma região da fonte evita custo de transferência |
 | Parquet | Formato de armazenamento das camadas | Colunar e comprimido; na tabela de alunos ficou 3,0 vezes menor que o equivalente em CSV (medição do projeto) |
 | Google Pub/Sub | Mensageria do streaming | Serviço gerenciado no mesmo projeto GCP; dead letter topic nativo; conceitos equivalentes aos estudados nas aulas de Kafka (ver D-009) |
+| pandas | Motor de transformação (Bronze → Silver → Gold) | O volume do projeto (~70 MB de Bronze) está muito abaixo do que justificaria processamento distribuído; dimensionar a ferramenta ao problema é prática de FinOps (ver D-012) |
 
-As demais escolhas (mensageria de streaming, processamento, orquestração) serão definidas e justificadas na Etapa 2.
+A escolha restante (orquestração) será definida e justificada na etapa correspondente.
 
 ## 6. Decisões arquiteturais e trade-offs
 
@@ -199,7 +208,20 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 
 ## 7. Qualidade de dados
 
-🚧 Em construção (Etapa 5). Implementará validações de duplicidade, valores ausentes, chaves de relacionamento e consistência entre tabelas, com área de quarentena para registros inválidos.
+A qualidade é tratada em três tribunais distintos, cada um no ponto da pipeline onde o problema pode ser detectado:
+
+| Situação | Onde é detectada | Destino |
+|---|---|---|
+| Evento malformado ou duplicado no fluxo | Ingestão streaming (validação do contrato) | DLQ / descarte com registro |
+| Violação estrutural (aluno presente sem nota; ausente com nota) | Transformação Bronze → Silver | Quarentena, com o motivo carimbado |
+| Nulo com significado (ausente sem proficiência; resultado sem meta pactuada) | Transformação Bronze → Silver | Permanece na Silver, com semântica documentada |
+
+Princípios adotados (decisões D-011 e D-013):
+
+- **Nada é apagado.** O registro reprovado é isolado em `quarentena/` com o motivo da reprovação, mantendo a pipeline auditável (é possível responder por que um aluno não está na Silver) e reprocessável (se a regra mudar, a quarentena é a fila de reavaliação);
+- **Nulos são tratados de forma condicional.** Proficiência e peso nulos são legítimos em alunos ausentes (nulo estrutural da fonte) e anômalos em presentes; a Silver preserva os ausentes com a flag `presente` e envia as anomalias à quarentena. Na execução da carga histórica, 1.185 registros (0,03% dos 3,9 milhões) foram quarentenados por presença sem nota;
+- **Toda regra nasce de verificação empírica.** As premissas foram validadas nos dados antes de virarem código (notebook `desenv_03`, Seções 4 e 7), e as verificações estruturais (joins sem alteração de contagem, conservação de linhas, reconciliação de gravação) derrubam a execução de produção com código de saída 1;
+- **Integridade referencial conferida a cada join:** contagem de linhas inalterada (join muitos-para-um não cria nem elimina linhas) e correspondência completa das chaves (zero municípios sem par no diretório).
 
 ## 8. Monitoramento
 
@@ -216,6 +238,8 @@ As demais escolhas (mensageria de streaming, processamento, orquestração) ser�
 ## 11. Como executar
 
 Pré-requisitos: Python 3.11 ou superior e uma conta Google.
+
+> 📌 **Nota para Windows:** se o comando `python` não for reconhecido no seu terminal (o instalador nem sempre o adiciona ao PATH do PowerShell), substitua-o pelo launcher `py`, que é instalado por padrão: `py src/ingestion/prod_01_ingestao_batch.py`. Os comandos abaixo usam a forma canônica `python`.
 
 1. **Crie um projeto no Google Cloud** (gratuito, sem cartão): <https://console.cloud.google.com/projectcreate>. Anote o ID do projeto;
 2. **Instale as dependências:**
@@ -237,7 +261,13 @@ Pré-requisitos: Python 3.11 ou superior e uma conta Google.
    ```
    O modo `publicar` simula o sistema externo de avaliação emitindo resultados do ciclo de 2025; o modo `consumir` lê o backlog, valida contra o contrato, desvia malformados para a DLQ, descarta duplicatas (registro persistido em `controle/` no bucket) e grava o micro-lote em `bronze/eventos_resultado_aluno/`. A infraestrutura de mensageria (tópicos e subscriptions) é criada automaticamente na primeira execução.
 
-As instruções das demais etapas (transformações, orquestração) serão adicionadas conforme forem concluídas.
+7. **Execute a transformação Bronze → Silver:**
+   ```
+   python src/transform/prod_03_bronze_to_silver.py
+   ```
+   O script decodifica os dados com o dicionário da fonte, converte as metas para o formato long, aplica a flag de presença aos alunos, integra os resultados municipais com o diretório IBGE e a meta da safra vigente, agrega os eventos do fluxo na estimativa preliminar de 2025, executa as regras de qualidade (reprovados vão para `quarentena/`) e grava as tabelas em `silver/`, reconciliando cada gravação. A verificação manual é a mesma do passo 5: as áreas `silver/` e `quarentena/` devem aparecer no bucket ao lado de `bronze/`.
+
+As instruções das demais etapas (Gold, orquestração) serão adicionadas conforme forem concluídas.
 
 ## 12. Estrutura do repositório
 
@@ -246,12 +276,13 @@ As instruções das demais etapas (transformações, orquestração) serão adic
 │   ├── ingestion/
 │   │   ├── prod_01_ingestao_batch.py         # ingestão batch → Bronze
 │   │   └── prod_02_ingestao_streaming.py     # producer e consumer do streaming
-│   ├── transform/                         # bronze → silver → gold (Etapas 5 e 6)
-│   └── quality/                           # validações e quarentena (Etapa 5)
+│   └── transform/
+│       └── prod_03_bronze_to_silver.py       # Bronze → Silver, com qualidade e quarentena
 ├── notebooks/                             # desenvolvimento e estudos (prefixo desenv_)
 │   ├── desenv_00_levantamento_fontes_dados.py
 │   ├── desenv_01_ingestao_batch.ipynb        # desenvolvimento da ingestão batch
-│   └── desenv_02_ingestao_streaming.ipynb    # desenvolvimento da ingestão streaming
+│   ├── desenv_02_ingestao_streaming.ipynb    # desenvolvimento da ingestão streaming
+│   └── desenv_03_bronze_to_silver.ipynb      # desenvolvimento da camada Silver
 ├── docs/
 │   ├── dicionario_dados.md
 │   ├── sobre_o_indicador.md
@@ -271,7 +302,7 @@ As instruções das demais etapas (transformações, orquestração) serão adic
 | `desenv_00_levantamento_fontes_dados.py` | (sem par: levantamento de fontes) | 1 |
 | `desenv_01_ingestao_batch.ipynb` | `ingestion/prod_01_ingestao_batch.py` | 3 |
 | `desenv_02_ingestao_streaming.ipynb` | `ingestion/prod_02_ingestao_streaming.py` | 4 |
-| `desenv_03_bronze_to_silver.ipynb` (previsto) | `transform/prod_03_bronze_to_silver.py` | 5 |
+| `desenv_03_bronze_to_silver.ipynb` | `transform/prod_03_bronze_to_silver.py` | 5 |
 | `desenv_04_silver_to_gold.ipynb` (previsto) | `transform/prod_04_silver_to_gold.py` | 6 |
 
 ## 13. Status e roadmap
@@ -283,7 +314,7 @@ As instruções das demais etapas (transformações, orquestração) serão adic
 | 2 | Desenho da arquitetura, diagrama e trade-offs | 🟡 em andamento |
 | 3 | Ingestão batch (camada Bronze) | ✅ concluída |
 | 4 | Ingestão streaming simulada (camada Bronze) | ✅ concluída |
-| 5 | Camada Silver e qualidade de dados | ⬜ |
+| 5 | Camada Silver e qualidade de dados | ✅ concluída |
 | 6 | Camada Gold (datasets analíticos) | ⬜ |
 | 7 | Orquestração e monitoramento | ⬜ |
 | 8 | FinOps e estimativa de custos | ⬜ |

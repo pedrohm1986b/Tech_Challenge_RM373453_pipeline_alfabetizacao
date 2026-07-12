@@ -18,6 +18,9 @@ O script opera em dois modos, espelhando os dois papéis do streaming:
         descarta duplicatas (registro persistido entre execuções) e grava
         os válidos como micro-lote Parquet na Bronze.
 
+    (no Windows, se o comando python não for reconhecido, use o launcher py:
+    py src/ingestion/prod_02_ingestao_streaming.py ...)
+
 Infraestrutura (criada automaticamente se não existir): tópico de eventos,
 tópico de DLQ e as subscriptions da pipeline e de inspeção.
 
