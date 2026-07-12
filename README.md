@@ -290,6 +290,11 @@ Medição direta do bucket após a carga completa das três camadas (jul/2026):
 | **Total** | **267 MB** | ~5% do free tier do Cloud Storage |
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+    'pie1': '#cd7f32', 'pie2': '#a8a9ad', 'pie3': '#ffd700',
+    'pieTitleTextColor': '#8b949e', 'pieLegendTextColor': '#8b949e',
+    'pieSectionTextColor': '#ffffff',
+    'pieStrokeColor': '#8b949e', 'pieOuterStrokeColor': '#8b949e'}}}%%
 pie showData title Composição do lake (MB)
     "bronze (histórico de cargas)" : 205.7
     "silver (dados curados)" : 60.9
