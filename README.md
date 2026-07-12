@@ -289,6 +289,11 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    ```
    python src/ingestion/prod_01_ingestao_batch.py
    ```
+   ou, se não funcionar no terminal, tente via laucher py:
+   ```
+   py src/ingestion/prod_01_ingestao_batch.py
+   ```
+   
    Na primeira execução, o navegador abrirá solicitando a autorização da sua conta Google (BigQuery e Cloud Storage). O bucket do data lake é criado automaticamente caso não exista. A carga completa das 7 tabelas leva alguns minutos (a tabela `alunos` tem 3,9 milhões de linhas);
 5. **Verificação manual:** acesse `https://console.cloud.google.com/storage/browser/<SEU_BUCKET>` e confira a árvore `bronze/<tabela>/data_ingestao=<data>/`. O relatório impresso pelo script mostra as contagens e a reconciliação com a fonte.
 
@@ -297,17 +302,30 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    python src/ingestion/prod_02_ingestao_streaming.py publicar --eventos 200
    python src/ingestion/prod_02_ingestao_streaming.py consumir
    ```
+   ou
+   ```
+   py src/ingestion/prod_02_ingestao_streaming.py publicar --eventos 200
+   py src/ingestion/prod_02_ingestao_streaming.py consumir
+   ```
    O modo `publicar` simula o sistema externo de avaliação emitindo resultados do ciclo de 2025; o modo `consumir` lê o backlog, valida contra o contrato, desvia malformados para a DLQ, descarta duplicatas (registro persistido em `controle/` no bucket) e grava o micro-lote em `bronze/eventos_resultado_aluno/`. A infraestrutura de mensageria (tópicos e subscriptions) é criada automaticamente na primeira execução.
 
-7. **Execute a transformação Bronze → Silver:**
+8. **Execute a transformação Bronze → Silver:**
    ```
    python src/transform/prod_03_bronze_to_silver.py
    ```
+   ou
+   ```
+   py src/transform/prod_03_bronze_to_silver.py
+   ```
    O script decodifica os dados com o dicionário da fonte, converte as metas para o formato long, aplica a flag de presença aos alunos, integra os resultados municipais com o diretório IBGE e a meta da safra vigente, agrega os eventos do fluxo na estimativa preliminar de 2025, executa as regras de qualidade (reprovados vão para `quarentena/`) e grava as tabelas em `silver/`, reconciliando cada gravação. A verificação manual é a mesma do passo 5: as áreas `silver/` e `quarentena/` devem aparecer no bucket ao lado de `bronze/`.
 
-8. **Execute a transformação Silver → Gold:**
+10. **Execute a transformação Silver → Gold:**
    ```
    python src/transform/prod_04_silver_to_gold.py
+   ```
+ou
+   ```
+   py src/transform/prod_04_silver_to_gold.py
    ```
    O script calcula as três medidas da D-011 (taxa oficial, taxa ajustada e participação), monta a série histórica municipal unindo o histórico oficial com a estimativa do fluxo (coluna `origem` em cada linha), integra a meta da safra vigente, grava `gold/indicador_municipio` e publica a tabela no BigQuery como tabela externa. Verificação manual: no console do BigQuery, o dataset `gold` aparece no seu projeto com a tabela `indicador_municipio`, consultável em SQL; no bucket, a área `gold/` completa o medalhão.
 
