@@ -225,7 +225,7 @@ O critério de classificação foi a dinâmica natural de produção de cada dad
 
 ### 6.3 Kafka × Pub/Sub
 
-O módulo ensinou streaming com Apache Kafka; a pipeline usa Google Pub/Sub (decisão D-009). Os conceitos transferem-se um a um: producer e publisher, consumer group e subscription, offset e ack, partição com chave e ordering key, retenção e backlog. A escolha ficou com o serviço gerenciado da mesma nuvem: mesma credencial, mesmo console, dead letter topic nativo e free tier folgado, mantendo a arquitetura inteira em um único provedor (coerência com a D-001). **Contraponto:** o Kafka local seria fiel à ferramenta das aulas e exporia a mecânica de partições e offsets com mais detalhe, ao custo de um broker fora da nuvem do projeto, com instalação e administração próprias. a professor confirmou a flexibilidade de tecnologia para ingestões equivalentes no grupod do Discord da Pós Tech.
+O módulo ensinou streaming com Apache Kafka; a pipeline usa Google Pub/Sub (decisão D-009). Os conceitos transferem-se um a um: producer e publisher, consumer group e subscription, offset e ack, partição com chave e ordering key, retenção e backlog. A escolha ficou com o serviço gerenciado da mesma nuvem: mesma credencial, mesmo console, dead letter topic nativo e free tier folgado, mantendo a arquitetura inteira em um único provedor (coerência com a D-001). **Contraponto:** o Kafka local seria fiel à ferramenta das aulas e exporia a mecânica de partições e offsets com mais detalhe, ao custo de um broker fora da nuvem do projeto, com instalação e administração próprias. O professor confirmou a flexibilidade de tecnologia para ingestões equivalentes no grupo do Discord da Pós Tech.
 
 ### 6.4 pandas × Spark (custo × performance)
 
@@ -289,7 +289,7 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    ```
    python src/ingestion/prod_01_ingestao_batch.py
    ```
-   ou, se não funcionar no terminal, tente via laucher py:
+   ou, se não funcionar no terminal, tente via launcher py:
    ```
    py src/ingestion/prod_01_ingestao_batch.py
    ```
@@ -309,7 +309,7 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    ```
    O modo `publicar` simula o sistema externo de avaliação emitindo resultados do ciclo de 2025; o modo `consumir` lê o backlog, valida contra o contrato, desvia malformados para a DLQ, descarta duplicatas (registro persistido em `controle/` no bucket) e grava o micro-lote em `bronze/eventos_resultado_aluno/`. A infraestrutura de mensageria (tópicos e subscriptions) é criada automaticamente na primeira execução.
 
-8. **Execute a transformação Bronze → Silver:**
+7. **Execute a transformação Bronze → Silver:**
    ```
    python src/transform/prod_03_bronze_to_silver.py
    ```
@@ -319,11 +319,11 @@ As duas trilhas produzem o mesmo resultado no lake (a correspondência entre os 
    ```
    O script decodifica os dados com o dicionário da fonte, converte as metas para o formato long, aplica a flag de presença aos alunos, integra os resultados municipais com o diretório IBGE e a meta da safra vigente, agrega os eventos do fluxo na estimativa preliminar de 2025, executa as regras de qualidade (reprovados vão para `quarentena/`) e grava as tabelas em `silver/`, reconciliando cada gravação. A verificação manual é a mesma do passo 5: as áreas `silver/` e `quarentena/` devem aparecer no bucket ao lado de `bronze/`.
 
-10. **Execute a transformação Silver → Gold:**
+8. **Execute a transformação Silver → Gold:**
    ```
    python src/transform/prod_04_silver_to_gold.py
    ```
-ou
+   ou
    ```
    py src/transform/prod_04_silver_to_gold.py
    ```
