@@ -217,7 +217,7 @@ Quatro fundamentos sustentam a escolha:
 3. **Bronze física, não virtual:** uma view reflete o estado atual da fonte; se a origem corrigir um número, a "bronze virtual" muda junto e a auditoria se perde. O Parquet no lake congela o dado como ele chegou, com o timestamp de ingestão;
 4. **Streaming exige código:** producer, consumer, DLQ e deduplicação não se fazem com query. Como o código é obrigatório para metade da ingestão, concentrar a pipeline nele mantém um paradigma único.
 
-**Contraponto honesto:** o dbt resolve o versionamento para o mundo "tudo no warehouse" (SQL em Git, com testes e PRs), e uma operação puramente batch poderia legitimamente escolher BigQuery com dbt. Não foi a escolha aqui porque o case exige medalhão em lake e ingestão streaming, e porque a Bronze física se perderia. O warehouse é usado onde ele brilha: servir a análise (tabela externa sobre a Gold, decisão D-012), não hospedar a pipeline inteira.
+**Contraponto honesto:** o dbt resolve o versionamento para o mundo "tudo no warehouse" (SQL em Git, com testes e PRs), e uma operação puramente batch poderia legitimamente escolher BigQuery com dbt. Não foi a escolha aqui porque o case exige medalhão em lake e ingestão streaming, e porque a Bronze física se perderia. O warehouse é usado onde se pode servir de análise (tabela externa sobre a Gold, decisão D-012), não hospedar a pipeline inteira.
 
 ### 6.2 Batch × streaming
 
