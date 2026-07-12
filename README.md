@@ -285,10 +285,11 @@ Medição direta do bucket após a carga completa das três camadas (jul/2026):
 | **Total** | **267 MB** | ~5% do free tier do Cloud Storage |
 
 ```mermaid
-pie showData title Composição do lake (MB)
-    "bronze (histórico de cargas)" : 205.7
-    "silver (dados curados)" : 60.9
-    "gold (dataset analítico)" : 0.4
+xychart-beta
+    title "Composição do lake por camada (MB)"
+    x-axis ["bronze", "silver", "gold", "quarentena"]
+    y-axis "MB" 0 --> 220
+    bar [205.7, 60.9, 0.4, 0.1]
 ```
 
 A Bronze domina o volume porque preserva o histórico de cargas por partição de data, que é seu papel. A alavanca de custo declarada para o crescimento é a **política de ciclo de vida** do bucket: regras de lifecycle podem mover partições antigas para classes frias (Nearline/Coldline, frações do preço) ou expirá-las após o período de auditoria, sem tocar no código da pipeline.
@@ -317,18 +318,20 @@ A arquitetura opera integralmente dentro dos free tiers, com folga de mais de um
 | BigQuery (consultas) | 3 TB varridos (2 TB além do free tier) | ~US$ 12,50 |
 | Pub/Sub | ~20 GB de tráfego | ~US$ 0,40 |
 | Dataproc (se a transformação migrar para Spark, cluster efêmero ~1 h/dia) | ~30 h | ~US$ 15 |
-| **Total sem orquestrador gerenciado** | | **~US$ 28** |
+| Machine learning (Vertex AI: desenvolvimento, testes, treino e predição em lote das aplicações da seção 10) | jobs efêmeros por ciclo | ~US$ 5 |
+| **Total sem serviços sempre ligados** | | **~US$ 33** |
 | Cloud Composer (se adotado) | ambiente mínimo sempre ligado | **+ ~US$ 400** |
+| Endpoint de ML online (se adotado) | predição em tempo real, sempre ligado | **+ ~US$ 70** |
 
 ```mermaid
 xychart-beta
     title "Custo mensal estimado por cenário (US$)"
-    x-axis ["Projeto atual", "Escala nacional", "Escala + Composer"]
-    y-axis "US$ por mês" 0 --> 450
-    bar [0, 28, 428]
+    x-axis ["Projeto atual", "Escala nacional", "Escala + sempre ligados"]
+    y-axis "US$ por mês" 0 --> 520
+    bar [0, 33, 503]
 ```
 
-A leitura que importa está no salto da terceira barra: mesmo no cenário de escala, **o custo de dados é marginal**; quem domina a conta é o serviço gerenciado sempre ligado (orquestração). É a confirmação numérica das decisões D-012 e D-014: dimensionar a ferramenta ao problema é onde o FinOps se ganha ou se perde nesta arquitetura.
+A leitura que importa está no salto da terceira barra: mesmo no cenário de escala, **o custo de dados é marginal**; quem domina a conta são os serviços sempre ligados (orquestrador gerenciado e endpoint de predição em tempo real). O mesmo padrão vale para o machine learning: o ciclo completo do modelo (desenvolvimento, testes, treino e predição em lote a cada edição do indicador) custa unidades de dólar em jobs efêmeros, enquanto a implantação como endpoint online multiplicaria esse valor por manter máquina dedicada 24 horas; para um indicador de ciclo anual, a predição em lote atende. É a confirmação numérica das decisões D-012 e D-014: dimensionar a ferramenta ao problema é onde o FinOps se ganha ou se perde nesta arquitetura.
 
 ## 10. Aplicação em Inteligência Artificial
 
