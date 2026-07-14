@@ -27,9 +27,9 @@ Pipeline híbrida de dados (batch e streaming) em nuvem para análise do **Indic
 
 ## 🎥 Vídeo executivo da apresentação
 
-**▶️ [Assista à apresentação do projeto (até 5 min)](https://drive.google.com/drive/folders/1RSx9I6UF9Dm1Xm_DMWTtKhCnytWAfC2P)**
+**▶️ [Assista à apresentação do projeto](https://drive.google.com/drive/folders/1RSx9I6UF9Dm1Xm_DMWTtKhCnytWAfC2P)**
 
-> **Para o avaliador:** este é o vídeo executivo exigido no enunciado, no qual o projeto é apresentado em linguagem voltada a liderança e stakeholders — problema de negócio, arquitetura da solução, valor da pipeline e potencial de uso para inteligência artificial. O link acima aponta para uma pasta no Google Drive com acesso de visualização. Caso o vídeo não abra, favor verificar as permissões de compartilhamento ou entrar em contato pelo e-mail do autor (ver rodapé).
+> **Para o avaliador:** este é o vídeo executivo exigido no enunciado, no qual o projeto é apresentado em linguagem voltada a liderança e stakeholders — problema de negócio, arquitetura da solução, valor da pipeline e potencial de uso para inteligência artificial. O link acima aponta para uma pasta no Google Drive com acesso de visualização. Caso o vídeo não abra, favor verificar as permissões de compartilhamento ou entrar em contato pelo e-mail do autor (pedrohm1986b@gmail.com). Como o tempo foi bastante curto, acabei decidindo não abordar o tema de FinOps que foi desenvolvido aqui na documentação. OK?
 
 ---
 
